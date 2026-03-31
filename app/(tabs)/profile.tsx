@@ -2,11 +2,13 @@ import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } 
 import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
 import ProgressBar from "../../components/ProgressBar";
+import { useAuthContext } from "../../src/providers/AuthProvider";
 import { useCoaching } from "../../src/hooks/useCoaching";
 import { useStreak } from "../../src/hooks/useStreak";
 import { useOnboarding } from "../../src/hooks/useOnboarding";
 
 export default function ProfileScreen() {
+  const { profile } = useAuthContext();
   const { progress } = useCoaching();
   const {
     currentStreak,
@@ -36,12 +38,14 @@ export default function ProfileScreen() {
         <Card>
           <View style={styles.profileRow}>
             <View style={styles.avatarLarge}>
-              <Text style={styles.avatarText}>YN</Text>
+              <Text style={styles.avatarText}>
+                {(profile?.full_name || "YN").split(" ").map((n) => n[0]).join("").slice(0, 2)}
+              </Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.userName}>Your Name</Text>
-              <Text style={styles.userLocation}>Cape Coral, FL</Text>
-              <Text style={styles.userRole}>Real Estate Agent · 8 years</Text>
+              <Text style={styles.userName}>{profile?.full_name || "Your Name"}</Text>
+              <Text style={styles.userLocation}>{profile?.market_city || "Cape Coral"}, {profile?.market_state || "FL"}</Text>
+              <Text style={styles.userRole}>Real Estate Agent · {profile?.experience_years || 8} years</Text>
             </View>
             <TouchableOpacity style={styles.editBtn}>
               <Text style={styles.editBtnText}>Edit</Text>

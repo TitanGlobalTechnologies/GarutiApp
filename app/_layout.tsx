@@ -8,7 +8,7 @@ import { AuthProvider, useAuthContext } from "../src/providers/AuthProvider";
 import PhoneFrame from "../components/PhoneFrame";
 
 function RootNavigator() {
-  const { session, loading } = useAuthContext();
+  const { session, loading, isDemoMode } = useAuthContext();
   const segments = useSegments();
   const router = useRouter();
   const [isReady, setIsReady] = useState(false);
@@ -21,6 +21,15 @@ function RootNavigator() {
   useEffect(() => {
     if (!isReady) return;
 
+    // Demo mode: always go straight to tabs (no auth needed)
+    if (isDemoMode) {
+      const inTabs = segments[0] === "(tabs)";
+      if (!inTabs && segments[0] !== "adaptation" && segments[0] !== "conversation" && segments[0] !== "subscription") {
+        router.replace("/(tabs)");
+      }
+      return;
+    }
+
     const inAuthGroup = segments[0] === "auth";
 
     if (!session && !inAuthGroup) {
@@ -28,7 +37,7 @@ function RootNavigator() {
     } else if (session && inAuthGroup) {
       router.replace("/(tabs)");
     }
-  }, [session, segments, isReady]);
+  }, [session, segments, isReady, isDemoMode]);
 
   if (loading) {
     return (
