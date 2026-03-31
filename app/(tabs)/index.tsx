@@ -102,22 +102,6 @@ export default function DigestScreen() {
         </Card>
         </HighlightGlow>
 
-        {/* Top Adaptation Preview */}
-        {topAdaptation && (
-          <Card>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>YOUR TOP ADAPTATION</Text>
-              <Badge label="Ready" variant="green" />
-            </View>
-            <Text style={styles.adaptationText}>
-              Hook: "Everyone's talking about {marketCity} flooding — here's what nobody tells you about the NEW construction zones..."
-            </Text>
-            <Text style={styles.adaptationMeta}>
-              Based on: {topAdaptation.title} · Adapted for your audience
-            </Text>
-          </Card>
-        )}
-
         <CTAButton
           label="See All 5 Adaptations"
           onPress={() => {
