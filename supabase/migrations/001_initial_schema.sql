@@ -11,6 +11,7 @@ CREATE TABLE public.profiles (
   avatar_url TEXT,
   market_city TEXT NOT NULL DEFAULT '',
   market_state TEXT NOT NULL DEFAULT '',
+  market_zip TEXT NOT NULL DEFAULT '',
   experience_years INTEGER,
   content_style TEXT,
   stripe_customer_id TEXT,
@@ -43,13 +44,14 @@ CREATE POLICY "Users can insert own profile"
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, full_name, email, market_city, market_state)
+  INSERT INTO public.profiles (id, full_name, email, market_city, market_state, market_zip)
   VALUES (
     NEW.id,
     COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'market_city', ''),
-    COALESCE(NEW.raw_user_meta_data->>'market_state', '')
+    COALESCE(NEW.raw_user_meta_data->>'market_state', ''),
+    COALESCE(NEW.raw_user_meta_data->>'market_zip', '')
   );
   RETURN NEW;
 END;

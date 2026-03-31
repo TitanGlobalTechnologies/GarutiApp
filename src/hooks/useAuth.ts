@@ -10,6 +10,7 @@ const DEMO_PROFILE: Profile = {
   avatar_url: null,
   market_city: "Cape Coral",
   market_state: "FL",
+  market_zip: "33914",
   experience_years: 8,
   content_style: "Professional but approachable",
   stripe_customer_id: null,

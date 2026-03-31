@@ -57,7 +57,7 @@ export default function AccountSettingsScreen() {
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Market</Text>
             <Text style={styles.infoValue}>
-              {profile?.market_city || "Cape Coral"}, {profile?.market_state || "FL"}
+              {profile?.market_city || "Cape Coral"}, {profile?.market_state || "FL"} {profile?.market_zip || "33914"}
             </Text>
           </View>
           <View style={styles.infoRow}>

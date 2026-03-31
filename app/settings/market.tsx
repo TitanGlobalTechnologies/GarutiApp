@@ -20,17 +20,19 @@ export default function MarketSettingsScreen() {
   const { showToast } = useUI();
   const [city, setCity] = useState(profile?.market_city || "");
   const [state, setState] = useState(profile?.market_state || "");
+  const [zip, setZip] = useState(profile?.market_zip || "");
   const [experience, setExperience] = useState(profile?.experience_years || 8);
   const [saved, setSaved] = useState(false);
 
   async function handleSave() {
-    if (!city.trim() || !state.trim()) {
-      showToast({ message: "Please enter your market city and state.", type: "error" });
+    if (!city.trim() || !state.trim() || !zip.trim()) {
+      showToast({ message: "Please enter your market city, state, and zip code.", type: "error" });
       return;
     }
     await updateProfile({
       market_city: city.trim(),
       market_state: state.toUpperCase().trim(),
+      market_zip: zip.trim(),
       experience_years: experience,
     });
     setSaved(true);
@@ -61,17 +63,31 @@ export default function MarketSettingsScreen() {
               autoCapitalize="words"
             />
           </View>
-          <View style={styles.field}>
-            <Text style={styles.label}>STATE</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="FL"
-              placeholderTextColor="#6B7280"
-              value={state}
-              onChangeText={(v) => { setState(v.toUpperCase().slice(0, 2)); setSaved(false); }}
-              autoCapitalize="characters"
-              maxLength={2}
-            />
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <View style={[styles.field, { flex: 1 }]}>
+              <Text style={styles.label}>STATE</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="FL"
+                placeholderTextColor="#6B7280"
+                value={state}
+                onChangeText={(v) => { setState(v.toUpperCase().slice(0, 2)); setSaved(false); }}
+                autoCapitalize="characters"
+                maxLength={2}
+              />
+            </View>
+            <View style={[styles.field, { flex: 1 }]}>
+              <Text style={styles.label}>ZIP CODE</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="33914"
+                placeholderTextColor="#6B7280"
+                value={zip}
+                onChangeText={(v) => { setZip(v.replace(/[^0-9]/g, "").slice(0, 5)); setSaved(false); }}
+                keyboardType="number-pad"
+                maxLength={5}
+              />
+            </View>
           </View>
         </Card>
 

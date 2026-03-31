@@ -17,6 +17,7 @@ export interface Profile {
   avatar_url: string | null;
   market_city: string;
   market_state: string;
+  market_zip: string;
   experience_years: number | null;
   content_style: string | null;
   stripe_customer_id: string | null;
