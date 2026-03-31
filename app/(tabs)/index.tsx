@@ -1,14 +1,56 @@
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator } from "react-native";
+import { useRouter } from "expo-router";
 import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
 import Badge from "../../components/Badge";
 import ItemRow from "../../components/ItemRow";
 import CTAButton from "../../components/CTAButton";
+import { useDigest } from "../../src/hooks/useDigest";
+
+function formatViews(n: number): string {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
+  if (n >= 1000) return (n / 1000).toFixed(1) + "K";
+  return String(n);
+}
+
+function platformIcon(p: string): string {
+  switch (p) {
+    case "instagram": return "📸";
+    case "youtube": return "▶️";
+    case "reddit": return "💬";
+    case "twitter": return "🐦";
+    case "tiktok": return "🎵";
+    default: return "📱";
+  }
+}
 
 export default function DigestScreen() {
+  const router = useRouter();
+  // TODO: get market from user profile
+  const { content, loading, refresh } = useDigest("Cape Coral", "FL");
+
+  if (loading && content.length === 0) {
+    return (
+      <SafeArea style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#F97316" />
+          <Text style={styles.loadingText}>Loading your digest...</Text>
+        </View>
+      </SafeArea>
+    );
+  }
+
+  const topAdaptation = content[0];
+
   return (
     <SafeArea style={styles.container} edges={["top"]}>
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={refresh} tintColor="#F97316" />
+        }
+      >
         <Text style={styles.title}>Your Daily Digest</Text>
 
         {/* Location + Streak */}
@@ -21,67 +63,69 @@ export default function DigestScreen() {
           </View>
         </View>
 
-        {/* Top Performing Reels */}
+        {/* Top Performing Content */}
         <Card>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>TOP PERFORMING REELS</Text>
+            <Text style={styles.cardTitle}>TOP PERFORMING CONTENT</Text>
             <Badge label="Today" variant="orange" />
           </View>
-          <ItemRow
-            rightElement={
-              <Text style={styles.engRate}>4.2%</Text>
-            }
-          >
-            <Text style={styles.reelTitle}>
-              "Stop buying in Cape Coral until..."
-            </Text>
-            <Text style={styles.reelMeta}>
-              @suncoast_realtor · 48.2K views
-            </Text>
-          </ItemRow>
-          <ItemRow
-            rightElement={
-              <Text style={styles.engRate}>3.8%</Text>
-            }
-          >
-            <Text style={styles.reelTitle}>
-              "3 neighborhoods under $400K"
-            </Text>
-            <Text style={styles.reelMeta}>
-              @capecorallife · 31.7K views
-            </Text>
-          </ItemRow>
-          <ItemRow
-            rightElement={
-              <Text style={styles.engRate}>3.5%</Text>
-            }
-          >
-            <Text style={styles.reelTitle}>
-              "Insurance hack every FL buyer needs"
-            </Text>
-            <Text style={styles.reelMeta}>
-              @fl_homes_daily · 27.1K views
-            </Text>
-          </ItemRow>
+          {content.map((item, i) => (
+            <TouchableOpacity
+              key={item.url}
+              onPress={() =>
+                router.push({
+                  pathname: "/adaptation/[url]",
+                  params: { url: encodeURIComponent(item.url), title: item.title },
+                })
+              }
+            >
+              <ItemRow
+                rightElement={
+                  <View style={styles.engCol}>
+                    <Text style={styles.engRate}>{item.engagementRate}%</Text>
+                    <Text style={styles.platformBadge}>{platformIcon(item.platform)}</Text>
+                  </View>
+                }
+              >
+                <Text style={styles.reelTitle} numberOfLines={2}>{item.title}</Text>
+                <Text style={styles.reelMeta}>
+                  @{item.creatorHandle} · {formatViews(item.views || item.likes)} {item.views ? "views" : "likes"}
+                </Text>
+              </ItemRow>
+            </TouchableOpacity>
+          ))}
         </Card>
 
-        {/* Top Adaptation */}
-        <Card>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>YOUR TOP ADAPTATION</Text>
-            <Badge label="Ready" variant="green" />
-          </View>
-          <Text style={styles.adaptationText}>
-            Hook: "Everyone's talking about Cape Coral flooding — here's what
-            nobody tells you about the NEW construction zones..."
-          </Text>
-          <Text style={styles.adaptationMeta}>
-            Based on: "Stop buying in Cape Coral until..." · Adapted for your
-            audience
-          </Text>
-        </Card>
+        {/* Top Adaptation Preview */}
+        {topAdaptation && (
+          <Card>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>YOUR TOP ADAPTATION</Text>
+              <Badge label="Ready" variant="green" />
+            </View>
+            <Text style={styles.adaptationText}>
+              Hook: "Everyone's talking about Cape Coral flooding — here's what nobody tells you about the NEW construction zones..."
+            </Text>
+            <Text style={styles.adaptationMeta}>
+              Based on: {topAdaptation.title} · Adapted for your audience
+            </Text>
+          </Card>
+        )}
 
-        <CTAButton label="See All 5 Adaptations" onPress={() => {}} />
+        <CTAButton
+          label="See All 5 Adaptations"
+          onPress={() => {
+            if (topAdaptation) {
+              router.push({
+                pathname: "/adaptation/[url]",
+                params: {
+                  url: encodeURIComponent(topAdaptation.url),
+                  title: topAdaptation.title,
+                },
+              });
+            }
+          }}
+        />
         <View style={{ height: 24 }} />
       </ScrollView>
     </SafeArea>
@@ -91,6 +135,8 @@ export default function DigestScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0F1923" },
   scroll: { flex: 1, paddingHorizontal: 16 },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", gap: 12 },
+  loadingText: { color: "#9CA3AF", fontSize: 14 },
   title: { fontSize: 22, fontWeight: "700", color: "#fff", marginBottom: 16 },
   headerRow: {
     flexDirection: "row",
@@ -118,15 +164,9 @@ const styles = StyleSheet.create({
   },
   reelTitle: { fontSize: 14, fontWeight: "600", color: "#fff" },
   reelMeta: { fontSize: 11, color: "#6B7280", marginTop: 3 },
+  engCol: { alignItems: "flex-end", gap: 2 },
   engRate: { color: "#4ADE80", fontSize: 13, fontWeight: "600" },
-  adaptationText: {
-    fontSize: 13,
-    color: "#E5E7EB",
-    lineHeight: 20,
-  },
-  adaptationMeta: {
-    fontSize: 11,
-    color: "#6B7280",
-    marginTop: 8,
-  },
+  platformBadge: { fontSize: 12 },
+  adaptationText: { fontSize: 13, color: "#E5E7EB", lineHeight: 20 },
+  adaptationMeta: { fontSize: 11, color: "#6B7280", marginTop: 8 },
 });
