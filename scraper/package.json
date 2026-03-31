@@ -1,0 +1,18 @@
+{
+  "name": "lae-scraper",
+  "version": "1.0.0",
+  "description": "LAE Content Scraper — discovers viral real estate Reels by location",
+  "scripts": {
+    "scrape": "SCRAPER_MODE=live npx ts-node src/pipeline.ts",
+    "scrape:mock": "SCRAPER_MODE=mock npx ts-node src/pipeline.ts",
+    "scrape:save-fixtures": "SCRAPER_MODE=live npx ts-node src/pipeline.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2",
+    "@types/node": "^22.0.0"
+  }
+}
