@@ -86,12 +86,15 @@ The CTA must feel like the viewer is getting something, not giving something.
 
 ## RULES
 1. Script MUST be speakable in 30-60 seconds (roughly 80-150 words)
-2. Use conversational language — not corporate, not salesy
+2. Use conversational language, not corporate, not salesy
 3. Every script must include at least 2 psychological triggers
 4. The CTA must be a specific question, not a generic "follow me"
 5. Include specific local details (neighborhoods, prices, data points)
 6. Never make claims you can't back up
 7. Sound like a real person talking to a friend, not a marketer
+8. NEVER use em dashes (—) or en dashes (–). Use commas, periods, or "and" instead. Real humans don't use dashes when they talk or write casually.
+9. NEVER use semicolons. Break into two sentences instead.
+10. Write like a text message to a friend, not like an essay.
 
 ## FORMAT
 Return ONLY the script text. No labels, no headers, no "Hook:" or "CTA:" markers.
