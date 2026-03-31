@@ -14,20 +14,36 @@ const STYLE_OPTIONS = [
   { value: "energetic", label: "High Energy", desc: "Enthusiastic, motivational, fast-paced" },
 ];
 
+/**
+ * Parse the stored content_style back into style + notes.
+ * Stored as "professional" or "professional — my custom notes"
+ */
+function parseStoredStyle(stored: string | null | undefined): { style: string; notes: string } {
+  if (!stored) return { style: "friendly", notes: "" };
+  const parts = stored.split(" — ");
+  const styleValue = parts[0].trim();
+  const notes = parts.length > 1 ? parts.slice(1).join(" — ").trim() : "";
+  // Check if the style value matches one of our options
+  const isKnown = STYLE_OPTIONS.some((o) => o.value === styleValue);
+  return { style: isKnown ? styleValue : "friendly", notes };
+}
+
 export default function ContentStyleScreen() {
   const router = useRouter();
   const { profile, updateProfile } = useAuthContext();
-  const [style, setStyle] = useState(profile?.content_style || "friendly");
   const { showToast } = useUI();
-  const [customNotes, setCustomNotes] = useState("");
+  const parsed = parseStoredStyle(profile?.content_style);
+  const [style, setStyle] = useState(parsed.style);
+  const [customNotes, setCustomNotes] = useState(parsed.notes);
+  const [saved, setSaved] = useState(false);
 
   async function handleSave() {
-    const fullStyle = customNotes
+    const fullStyle = customNotes.trim()
       ? `${style} — ${customNotes.trim()}`
       : style;
     await updateProfile({ content_style: fullStyle });
+    setSaved(true);
     showToast({ message: "Content style saved! AI will match this tone.", type: "success" });
-    setTimeout(() => router.back(), 1200);
   }
 
   return (
@@ -47,7 +63,7 @@ export default function ContentStyleScreen() {
             <TouchableOpacity
               key={opt.value}
               style={[styles.styleOption, style === opt.value && styles.styleOptionActive]}
-              onPress={() => setStyle(opt.value)}
+              onPress={() => { setStyle(opt.value); setSaved(false); }}
             >
               <View style={styles.styleRow}>
                 <View style={[styles.radio, style === opt.value && styles.radioActive]}>
@@ -74,13 +90,13 @@ export default function ContentStyleScreen() {
             placeholder="Optional — add any personal notes about your content style"
             placeholderTextColor="#6B7280"
             value={customNotes}
-            onChangeText={setCustomNotes}
+            onChangeText={(v) => { setCustomNotes(v); setSaved(false); }}
             multiline
             textAlignVertical="top"
           />
         </Card>
 
-        <CTAButton label="Save Style" onPress={handleSave} />
+        <CTAButton label={saved ? "✓ Saved" : "Save Style"} onPress={handleSave} />
         <View style={{ height: 32 }} />
       </ScrollView>
     </SafeArea>

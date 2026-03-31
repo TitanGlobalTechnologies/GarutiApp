@@ -17,10 +17,11 @@ const EXPERIENCE_OPTIONS = [
 export default function MarketSettingsScreen() {
   const router = useRouter();
   const { profile, updateProfile } = useAuthContext();
+  const { showToast } = useUI();
   const [city, setCity] = useState(profile?.market_city || "");
   const [state, setState] = useState(profile?.market_state || "");
-  const { showToast } = useUI();
   const [experience, setExperience] = useState(profile?.experience_years || 8);
+  const [saved, setSaved] = useState(false);
 
   async function handleSave() {
     if (!city.trim() || !state.trim()) {
@@ -32,8 +33,8 @@ export default function MarketSettingsScreen() {
       market_state: state.toUpperCase().trim(),
       experience_years: experience,
     });
+    setSaved(true);
     showToast({ message: "Market area updated! Digest will refresh.", type: "success" });
-    setTimeout(() => router.back(), 1200);
   }
 
   return (
@@ -56,7 +57,7 @@ export default function MarketSettingsScreen() {
               placeholder="Cape Coral"
               placeholderTextColor="#6B7280"
               value={city}
-              onChangeText={setCity}
+              onChangeText={(v) => { setCity(v); setSaved(false); }}
               autoCapitalize="words"
             />
           </View>
@@ -67,7 +68,7 @@ export default function MarketSettingsScreen() {
               placeholder="FL"
               placeholderTextColor="#6B7280"
               value={state}
-              onChangeText={(v) => setState(v.toUpperCase().slice(0, 2))}
+              onChangeText={(v) => { setState(v.toUpperCase().slice(0, 2)); setSaved(false); }}
               autoCapitalize="characters"
               maxLength={2}
             />
@@ -82,7 +83,7 @@ export default function MarketSettingsScreen() {
               <TouchableOpacity
                 key={opt.value}
                 style={[styles.chip, experience === opt.value && styles.chipActive]}
-                onPress={() => setExperience(opt.value)}
+                onPress={() => { setExperience(opt.value); setSaved(false); }}
               >
                 <Text style={[styles.chipText, experience === opt.value && styles.chipTextActive]}>
                   {opt.label}
@@ -92,7 +93,7 @@ export default function MarketSettingsScreen() {
           </View>
         </Card>
 
-        <CTAButton label="Save Changes" onPress={handleSave} />
+        <CTAButton label={saved ? "✓ Saved" : "Save Changes"} onPress={handleSave} />
         <View style={{ height: 32 }} />
       </ScrollView>
     </SafeArea>
