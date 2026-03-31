@@ -1,6 +1,6 @@
 # Local Authority Engine — Implementation Plan
 
-**Version:** 1.1
+**Version:** 2.0 — Zero-Cost Architecture
 **Date:** March 30, 2026
 **Prepared for:** John Garuti / Titan Global Technologies
 **Product:** Local Authority Engine (LAE) Mobile App + Web
@@ -33,13 +33,16 @@
 
 ### Week 0 Actions (Start NOW)
 
-- [ ] **Submit Instagram Graph API App Review** (lead time: 3-10 business days, up to 2 weeks)
-  - Create Facebook Developer account at [developers.facebook.com](https://developers.facebook.com)
-  - Create a Business-type app, add "Instagram Graph API" product
-  - Request permissions: `instagram_basic`, `instagram_manage_insights`, `pages_read_engagement`
-  - Prepare a screencast demo showing your use case (content discovery for real estate agents)
-  - Submit for App Review
-  - **Why first:** This is the single longest lead-time item. Everything else can be set up in a day.
+- [ ] ~~Submit Instagram Graph API App Review~~ **NO LONGER NEEDED** — We use Google Search for content discovery instead of platform APIs. See [CONTENT_DISCOVERY_STRATEGY.md](./CONTENT_DISCOVERY_STRATEGY.md).
+
+- [ ] **Set up Google Custom Search API** (takes 5 minutes, free)
+  - Create a Programmable Search Engine at [programmablesearchengine.google.com](https://programmablesearchengine.google.com)
+  - Enable Custom Search API in Google Cloud Console
+  - Get API Key — 100 free queries/day
+
+- [ ] **Set up Google Gemini API** (takes 5 minutes, free)
+  - Get API key at [aistudio.google.com](https://aistudio.google.com)
+  - 1M free tokens/day — replaces Claude at MVP for $0/month
 
 - [ ] **Register Apple Developer Account** ($99/year, approval takes 24-48 hours)
   - [developer.apple.com/programs/enroll](https://developer.apple.com/programs/enroll)
@@ -54,18 +57,18 @@
 - [ ] **Register domain** for the web app and email sending (e.g., `localauthorityengine.com`)
   - Needed for: Resend email domain verification, web deployment, deep links
 
-- [ ] **Set up Apify account** and test Instagram scraping for 2-3 target markets
-  - Confirm data quality before committing to the architecture
+- [ ] **Set up YouTube Data API v3** (takes 5 minutes, free — 10,000 units/day)
+  - Enable in Google Cloud Console, create API key
 
-### Instagram API Critical Constraint
+- [ ] **Apply for Twitter/X API v2 Free Tier** (takes 1-2 days)
+  - Get Bearer Token at [developer.twitter.com](https://developer.twitter.com)
+  - 1,500 tweet reads/month free
 
-> **The Instagram Graph API has a hard limit of 30 unique hashtags per 7-day rolling window per user.** This means if you're monitoring 10 markets with 3 hashtags each, you've already hit the limit. This is the single biggest constraint on the content discovery pipeline.
+### Content Discovery Strategy Change
 
-**Recommended hybrid approach:**
-1. Use **Instagram Graph API** for markets where you have < 3 hashtags to monitor (legal, official)
-2. Use **Apify** to supplement discovery for additional markets and hashtags (faster, unlimited, but carries TOS risk)
-3. Build a **manual content submission** fallback where coaches/admins can paste Reel URLs directly
-4. Long-term: consider **BrightData** datasets if scaling to 50+ markets
+> **We are NOT using Instagram Graph API or Apify.** Instead, we use Google Search (via Google Custom Search API) as a universal discovery layer across ALL platforms. This eliminates the Instagram 30-hashtag limit, removes the need for platform-specific API approvals, and costs $0/month.
+>
+> See **[CONTENT_DISCOVERY_STRATEGY.md](./CONTENT_DISCOVERY_STRATEGY.md)** for the full technical architecture, code examples, and scaling plan.
 
 ---
 
@@ -103,10 +106,12 @@
 |----------|--------|-----|
 | Mobile Framework | React Native + Expo | Single codebase → iOS, Android, Web |
 | Backend | Supabase | Auth + DB + Realtime + Edge Functions in one platform. Free tier for MVP. |
-| AI Provider | Anthropic Claude | Best for content adaptation. Sonnet for speed, Opus for quality. |
+| AI Provider (MVP) | Google Gemini | Free tier: 1M tokens/day. Upgrade to Claude when revenue justifies. |
+| AI Provider (Scale) | Anthropic Claude | Haiku for bulk, Sonnet for quality, Opus for complex analysis. |
 | Payments | Stripe | Industry standard. Supports subscriptions, trials, webhooks. |
 | Email | Resend | Developer-friendly, React Email templates, generous free tier. |
-| Content Discovery | Apify + Official APIs | Apify for scraping public Reels; YouTube Data API for Shorts. |
+| Content Discovery | Google Custom Search | Free 100 queries/day. Universal across all platforms via site: operator. |
+| Engagement Data | YouTube API + Reddit JSON + X API | All free. See CONTENT_DISCOVERY_STRATEGY.md. |
 | Push Notifications | Expo Notifications | Built into Expo. Free. Works on iOS, Android, Web. |
 
 ---
@@ -1281,30 +1286,45 @@ CREATE INDEX idx_email_events_user ON email_events(user_id, email_type);
 
 ## 14. Cost Projections
 
-### Monthly Operating Costs (at launch, ~100 users)
+### MVP Monthly Operating Costs (Zero-Cost Architecture)
 
 | Service | Plan | Monthly Cost |
 |---------|------|-------------|
-| Supabase | Pro | $25 |
-| Apify | Starter | $49 |
-| Claude API | Pay-as-you-go | $60-150 |
-| Resend | Pro | $20 |
-| Stripe | 2.9% + $0.30/txn | ~$300-500 (on ~$15K MRR) |
-| Expo Push | Free tier | $0 |
-| YouTube API | Free tier | $0 |
+| Supabase | Free Tier | $0 |
+| Google Custom Search | Free (100/day) | $0 |
+| Google Gemini AI | Free (1M tokens/day) | $0 |
+| YouTube Data API | Free (10K/day) | $0 |
+| Reddit JSON API | Free (no key) | $0 |
+| Twitter/X API v2 | Free (1,500/mo) | $0 |
+| Resend | Free (100 emails/day) | $0 |
+| Expo Push | Free | $0 |
+| Vercel (web) | Free Tier | $0 |
+| Expo EAS (builds) | Free Tier | $0 |
+| GitHub Actions (cron) | Free (2K min/mo) | $0 |
+| Stripe | 2.9% + $0.30/txn | Variable (revenue-based) |
 | Apple Developer | Annual | $8.25/mo ($99/yr) |
 | Google Play | One-time $25 | $0 |
-| Domain + Hosting | Vercel Pro | $20 |
-| Error Monitoring | Sentry Free | $0 |
-| **Total** | | **~$180-275/mo** (excl. Stripe fees) |
+| **Total Fixed Cost** | | **$0/month** |
+
+*Stripe fees only incurred when revenue comes in. Apple Developer is the only fixed annual cost ($99/yr).*
+
+### Scaling Costs (When Revenue Justifies)
+
+| Stage | Users | Est. MRR | Monthly Cost | New Services |
+|-------|-------|---------|-------------|-------------|
+| MVP | 0-50 | $0-5K | $0 | Free tier everything |
+| Early Growth | 50-200 | $5K-20K | ~$50 | + Serper.dev ($50/mo) |
+| Growth | 200-500 | $20K-50K | ~$150 | + Supabase Pro ($25) + Claude Haiku ($20) |
+| Scale | 500+ | $50K+ | ~$500 | + Apify for IG ($49) + Claude Sonnet ($150) |
 
 ### Revenue vs Cost at Scale
 
 | Users | Est. MRR | Operating Cost | Gross Margin |
 |-------|---------|----------------|-------------|
-| 100 | $15,000 | $500 | 97% |
-| 500 | $75,000 | $1,200 | 98% |
-| 1,000 | $150,000 | $2,500 | 98% |
+| 50 | $5,000 | $0 | ~100% |
+| 200 | $20,000 | $50 | 99.8% |
+| 500 | $50,000 | $150 | 99.7% |
+| 1,000 | $100,000 | $500 | 99.5% |
 
 *Note: Stripe processing fees (2.9% + $0.30) are additional and scale with revenue.*
 
@@ -1330,17 +1350,19 @@ WEEK 17-18  ██████  Phase 8: Testing, Polish & Launch
 
 ## Appendix: Quick-Start Checklist for the Team
 
-### Accounts to Create (Do This First)
-- [ ] [Supabase](https://supabase.com) — Backend (free to start)
+### Accounts to Create (Do This First) — All Free Except Apple ($99/yr)
+- [ ] [Google Cloud Console](https://console.cloud.google.com) — Custom Search API + YouTube API + Gemini (ALL FREE)
+- [ ] [Programmable Search Engine](https://programmablesearchengine.google.com) — Content discovery (free)
+- [ ] [Google AI Studio](https://aistudio.google.com) — Gemini API key (free)
+- [ ] [Supabase](https://supabase.com) — Backend (free tier)
 - [ ] [Stripe](https://stripe.com) — Payments (free to set up, pay per transaction)
-- [ ] [Anthropic Console](https://console.anthropic.com) — Claude AI API ($5 minimum credit)
-- [ ] [Google Cloud Console](https://console.cloud.google.com) — YouTube API (free)
-- [ ] [Apify](https://apify.com) — Content scraping ($49/mo)
-- [ ] [Resend](https://resend.com) — Email (free to start)
-- [ ] [Apple Developer](https://developer.apple.com) — iOS App Store ($99/year)
+- [ ] [Twitter Developer](https://developer.twitter.com) — X API v2 free tier
+- [ ] [Resend](https://resend.com) — Email (free tier)
+- [ ] [Apple Developer](https://developer.apple.com) — iOS App Store ($99/year — ONLY paid account)
 - [ ] [Google Play Console](https://play.google.com/console) — Android ($25 one-time)
 - [ ] [Expo](https://expo.dev) — Build service (free tier)
 - [ ] [Sentry](https://sentry.io) — Error monitoring (free tier)
+- [ ] [Anthropic Console](https://console.anthropic.com) — Claude AI (for LATER — when upgrading from Gemini)
 
 ### Environment Variables Needed
 ```env
@@ -1354,14 +1376,21 @@ STRIPE_SECRET_KEY=sk_live_...
 EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 
-# Claude AI
+# Google Custom Search (content discovery)
+GOOGLE_CUSTOM_SEARCH_KEY=AIza...
+GOOGLE_CUSTOM_SEARCH_CX=your_search_engine_id
+
+# Google Gemini AI (free tier — MVP)
+GEMINI_API_KEY=AIza...
+
+# Claude AI (upgrade path — when revenue justifies)
 ANTHROPIC_API_KEY=sk-ant-...
 
-# YouTube
+# YouTube Data API v3
 YOUTUBE_API_KEY=AIza...
 
-# Apify
-APIFY_API_TOKEN=apify_api_...
+# Twitter/X API v2
+TWITTER_BEARER_TOKEN=AAAA...
 
 # Resend
 RESEND_API_KEY=re_...
