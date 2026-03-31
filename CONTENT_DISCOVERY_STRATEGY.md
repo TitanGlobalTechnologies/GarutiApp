@@ -1,8 +1,8 @@
 # Content Discovery Strategy — Zero-Cost Architecture
 
-**Version:** 1.0
-**Date:** March 30, 2026
-**Status:** Research Complete — Ready for Implementation
+**Version:** 1.1
+**Date:** March 31, 2026
+**Status:** ✅ IMPLEMENTED — Code in `src/lib/discovery/` and `src/lib/gemini.ts`
 
 ---
 
@@ -433,13 +433,24 @@ Return as JSON array with keys: hook, script, postingTime, cta`
 
 ---
 
-## Implementation Priority
+## Implementation Status
 
-1. **Week 1:** Set up Google Custom Search + YouTube Data API + Reddit JSON
-2. **Week 2:** Build Gemini adaptation pipeline + Supabase storage
-3. **Week 3:** Add Twitter/X API v2 + Instagram Google snippet fallback
-4. **Week 4:** Build daily cron pipeline on GitHub Actions
-5. **When profitable:** Graduate to paid tiers (Serper, Claude, Apify)
+| Step | Status | Code Location |
+|------|--------|---------------|
+| Google Custom Search client | ✅ Built | `src/lib/discovery/google-search.ts` |
+| YouTube Data API client | ✅ Built | `src/lib/discovery/youtube.ts` |
+| Reddit JSON API client | ✅ Built | `src/lib/discovery/reddit.ts` |
+| Twitter/X API v2 client | ✅ Built | `src/lib/discovery/twitter.ts` |
+| Gemini AI adaptation engine | ✅ Built | `src/lib/gemini.ts` |
+| Pipeline orchestrator | ✅ Built | `src/lib/content-pipeline.ts` |
+| Mock data for dev/demos | ✅ Built | `src/data/mock-digest.ts` |
+| Data hooks (useDigest, useAdaptations) | ✅ Built | `src/hooks/useDigest.ts`, `src/hooks/useAdaptations.ts` |
+| Digest screen with live data | ✅ Built | `app/(tabs)/index.tsx` |
+| Adaptation detail screen | ✅ Built | `app/adaptation/[url].tsx` |
+| Daily cron pipeline (GitHub Actions) | ⏳ Pending | Needs Supabase + API keys configured |
+| Supabase Edge Function for pipeline | ⏳ Pending | Needs Supabase project set up |
+
+**Next step:** When API keys are added to `.env.local`, swap the mock data hooks to call the real pipeline. The pipeline code is ready.
 
 ---
 

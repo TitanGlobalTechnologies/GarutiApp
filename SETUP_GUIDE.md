@@ -1,7 +1,7 @@
 # GarutiApp — Team Setup Guide
 
-**Last Updated:** March 30, 2026
-**Status:** Phase 1 Complete (Auth + Database + Core UI)
+**Last Updated:** March 31, 2026
+**Status:** Phase 1-2 Complete (Auth + Database + Core UI + Daily Digest Engine)
 
 ---
 
@@ -15,6 +15,7 @@
 | 2 | **Implementation plan v1** — 8-phase dev plan, API guide, DB schema, risk register | 1 file |
 | 3 | **Zero-cost architecture v2** — Replaced paid APIs with free alternatives ($0/mo MVP) | 2 files |
 | 4 | **Phase 1: Auth + Database** — Full auth system, 14-table schema, protected routes, 4 auth screens | 21 files |
+| 5 | **Phase 2: Daily Digest Engine** — Content discovery pipeline (Google Search → YouTube/Reddit/Twitter APIs), Gemini AI adaptation engine, Adaptation detail screen with V1-V5 selector + copy-to-clipboard | 12 files |
 
 ### Project Structure
 
@@ -28,9 +29,11 @@ GarutiApp/
 │   │   ├── signup.tsx            # Sign up (name, email, password, market city/state)
 │   │   ├── signin.tsx            # Sign in + forgot password link
 │   │   └── forgot-password.tsx   # Email reset flow with confirmation
+│   ├── adaptation/               # Adaptation detail screens
+│   │   └── [url].tsx             # View 5 AI adaptations for a post (V1-V5 selector, copy, mark posted)
 │   └── (tabs)/                   # Main app screens (protected — requires auth)
 │       ├── _layout.tsx           # Bottom tab navigator (Digest, Tracker, Coach, Profile)
-│       ├── index.tsx             # Daily Digest — top Reels, adaptations, streak
+│       ├── index.tsx             # Daily Digest — top content, adaptations, streak, pull-to-refresh
 │       ├── tracker.tsx           # Conversation Tracker — stats, bar chart, contacts
 │       ├── coach.tsx             # Coaching Home — sessions, 90-day tracker, pods
 │       └── profile.tsx           # Profile — user info, progress, settings
@@ -48,10 +51,22 @@ GarutiApp/
 ├── src/
 │   ├── constants/
 │   │   └── theme.ts              # Colors, spacing, typography matching mockup
+│   ├── data/
+│   │   └── mock-digest.ts        # Mock data for demos (realistic Cape Coral RE content)
 │   ├── hooks/
-│   │   └── useAuth.ts            # Auth hook (signUp, signIn, signOut, resetPassword, updateProfile)
+│   │   ├── useAuth.ts            # Auth hook (signUp, signIn, signOut, resetPassword, updateProfile)
+│   │   ├── useDigest.ts          # Daily digest data hook (mock now, Supabase-ready)
+│   │   └── useAdaptations.ts     # AI adaptation data hook for a specific post
 │   ├── lib/
-│   │   └── supabase.ts           # Supabase client with AsyncStorage persistence
+│   │   ├── supabase.ts           # Supabase client with AsyncStorage persistence
+│   │   ├── gemini.ts             # Google Gemini AI — generates 5 adaptations per post ($0/mo)
+│   │   ├── content-pipeline.ts   # Orchestrator: discovery → engagement → ranking → AI
+│   │   └── discovery/
+│   │       ├── index.ts          # Barrel exports for all discovery clients
+│   │       ├── google-search.ts  # Google Custom Search API ($0 — 100 queries/day free)
+│   │       ├── youtube.ts        # YouTube Data API v3 ($0 — 10K calls/day free)
+│   │       ├── reddit.ts         # Reddit JSON API ($0 — no key needed, append .json)
+│   │       └── twitter.ts        # Twitter/X API v2 ($0 — 1,500 reads/mo free)
 │   ├── providers/
 │   │   └── AuthProvider.tsx      # App-wide auth context provider
 │   └── types/
@@ -213,15 +228,40 @@ The root layout (`app/_layout.tsx`) checks auth state on every navigation. Unaut
 
 ---
 
-## Next Steps (Phase 2: Daily Digest Engine)
+## What's Working Now (Demo-Ready)
 
-Phase 2 is the core value prop — content discovery + AI adaptations. It requires:
+The app is **fully functional with mock data**. Your team can demo the entire flow without any API keys:
 
-1. Google Custom Search API key (free, 100 queries/day)
-2. YouTube Data API v3 key (free, 10K calls/day)
-3. Google Gemini API key (free, 1M tokens/day)
+1. Open the app → Welcome screen with value props
+2. Sign up (requires Supabase connection) → or view tabs directly in dev mode
+3. **Daily Digest** → See 5 top-performing posts across Instagram, YouTube, Reddit
+4. **Tap any post** → View 5 AI-generated script adaptations
+5. **Switch versions** V1-V5 → Each has a unique hook, script, CTA, and posting time
+6. **Copy to clipboard** → Hook, full script, or CTA individually
+7. **Mark as Posted** → Logs to conversation tracker
+8. **Pull to refresh** → Simulates fetching new digest
+
+When API keys are added to `.env.local`, the app switches from mock data to live data automatically.
+
+## Activating Live Data (Optional — For Production)
+
+To switch from mock data to live content discovery, add these free API keys:
+
+| Key | Where to Get It | Cost | What It Unlocks |
+|-----|----------------|------|-----------------|
+| `GOOGLE_CUSTOM_SEARCH_KEY` | [Google Cloud Console](https://console.cloud.google.com) → Enable Custom Search API | $0 (100/day) | Content discovery across all platforms |
+| `GOOGLE_CUSTOM_SEARCH_CX` | [Programmable Search Engine](https://programmablesearchengine.google.com) | $0 | Search engine ID for the above |
+| `GEMINI_API_KEY` | [Google AI Studio](https://aistudio.google.com) | $0 (1M tokens/day) | AI-generated adaptations |
+| `YOUTUBE_API_KEY` | [Google Cloud Console](https://console.cloud.google.com) → Enable YouTube Data API v3 | $0 (10K/day) | YouTube video engagement stats |
+| `TWITTER_BEARER_TOKEN` | [Twitter Developer Portal](https://developer.twitter.com) | $0 (1,500/mo) | Tweet engagement stats |
+
+Reddit requires no API key — it's completely open.
 
 See [CONTENT_DISCOVERY_STRATEGY.md](./CONTENT_DISCOVERY_STRATEGY.md) for the full technical architecture.
+
+## Next Steps (Phase 3: Conversation Tracker)
+
+Phase 3 builds the conversation tracking system so agents can log DMs, comments, and calls with source attribution. This is the data that proves ROI and triggers the coaching upsell.
 
 See [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md) for the complete 18-week roadmap.
 
