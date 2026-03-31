@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from "react-native";
+import { useRouter } from "expo-router";
 import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
 import ProgressBar from "../../components/ProgressBar";
@@ -8,6 +9,7 @@ import { useStreak } from "../../src/hooks/useStreak";
 import { useOnboarding } from "../../src/hooks/useOnboarding";
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const { profile } = useAuthContext();
   const { progress } = useCoaching();
   const {
@@ -208,14 +210,18 @@ export default function ProfileScreen() {
         <Card>
           <Text style={[styles.cardTitle, { marginBottom: 8 }]}>SETTINGS</Text>
           {[
-            "Market Area",
-            "Content Style Preferences",
-            "Notification Preferences",
-            "Subscription & Billing",
-            "Account",
+            { label: "Market Area", route: "/settings/market" },
+            { label: "Content Style Preferences", route: "/settings/content-style" },
+            { label: "Notification Preferences", route: "/settings/notifications" },
+            { label: "Subscription & Billing", route: "/subscription/manage" },
+            { label: "Account", route: "/settings/account" },
           ].map((item) => (
-            <TouchableOpacity key={item} style={styles.settingRow}>
-              <Text style={styles.settingText}>{item}</Text>
+            <TouchableOpacity
+              key={item.label}
+              style={styles.settingRow}
+              onPress={() => router.push(item.route as any)}
+            >
+              <Text style={styles.settingText}>{item.label}</Text>
               <Text style={styles.chevron}>›</Text>
             </TouchableOpacity>
           ))}

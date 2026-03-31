@@ -37,6 +37,11 @@ GarutiApp/
 │   ├── conversation/             # Conversation management screens
 │   │   ├── new.tsx               # Log new conversation (contact, channel selector, status, notes)
 │   │   └── [id].tsx              # Conversation detail (notes, appointment, status update, delete)
+│   ├── settings/                 # Profile settings screens
+│   │   ├── market.tsx            # Market area — city, state, experience level (drives digest content)
+│   │   ├── content-style.tsx     # Content voice — 4 style options + custom notes for AI adaptations
+│   │   ├── notifications.tsx     # Toggle switches for digest, streak, coaching, follow-up, billing alerts
+│   │   └── account.tsx           # Account info, change password, export data, privacy/TOS, sign out, delete
 │   ├── subscription/             # Payments and subscription management
 │   │   ├── pricing.tsx           # 3-tier pricing (SaaS $99, Bundle $449, Coaching $397) + trial banner
 │   │   └── manage.tsx            # Current plan, trial countdown, cancel/pause, billing portal
@@ -292,6 +297,10 @@ The app is **fully functional with mock data**. Your team can demo the entire fl
 31. **Pricing screen** → 3-tier cards (SaaS $99 / Bundle $449 / Coaching $397)
 32. **Trial banner** → "8 days left" countdown with "Choose Plan" link
 33. **Manage subscription** → Current plan, cancel/pause/change, billing portal
+34. **Settings: Market Area** → Change city/state, experience level selector
+35. **Settings: Content Style** → 4 voice options (Professional/Friendly/Educational/Energetic) + custom notes
+36. **Settings: Notifications** → Toggle switches for 6 notification types with descriptions
+37. **Settings: Account** → User details, change password, 2FA, export data, privacy/TOS, sign out, delete
 
 When API keys are added to `.env.local`, the app switches from mock data to live data automatically.
 
