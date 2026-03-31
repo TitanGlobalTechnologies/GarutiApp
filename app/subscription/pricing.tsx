@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { showConfirm, showAlert } from "../../src/lib/alert";
 import { useRouter } from "expo-router";
 import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
@@ -11,22 +12,13 @@ export default function PricingScreen() {
   const { trialDaysRemaining, isTrialActive, subscribe } = useSubscription();
 
   async function handleSubscribe(tier: SubscriptionTier) {
-    // TODO: When Stripe is connected, this opens Stripe Checkout
-    Alert.alert(
-      "Stripe Not Connected",
-      `This will open Stripe Checkout for the ${tier} plan when API keys are configured.\n\nFor now, the subscription is simulated.`,
-      [
-        { text: "Cancel" },
-        {
-          text: "Simulate Subscribe",
-          onPress: async () => {
-            await subscribe(tier);
-            Alert.alert("Subscribed!", "You're now on the plan.", [
-              { text: "OK", onPress: () => router.back() },
-            ]);
-          },
-        },
-      ]
+    showConfirm(
+      "Simulate Subscribe",
+      `This will open Stripe Checkout for the ${tier} plan when API keys are configured. For now, the subscription is simulated.`,
+      async () => {
+        await subscribe(tier);
+        showAlert("Subscribed!", "You're now on the plan.", () => router.back());
+      }
     );
   }
 

@@ -5,9 +5,9 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   Platform,
 } from "react-native";
+import { showAlert } from "../../src/lib/alert";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
@@ -34,7 +34,7 @@ export default function AdaptationDetailScreen() {
       setCopiedIndex(index);
       setTimeout(() => setCopiedIndex(null), 2000);
     } catch {
-      Alert.alert("Copy failed", "Could not copy to clipboard.");
+      showAlert("Copy failed", "Could not copy to clipboard.");
     }
   }
 
@@ -139,9 +139,7 @@ export default function AdaptationDetailScreen() {
             <CTAButton
               label="Mark as Posted ✓"
               onPress={() => {
-                Alert.alert("Posted!", "Great job! This has been logged to your tracker.", [
-                  { text: "OK", onPress: () => router.back() },
-                ]);
+                showAlert("Posted!", "Great job! This has been logged to your tracker.", () => router.back());
               }}
             />
 

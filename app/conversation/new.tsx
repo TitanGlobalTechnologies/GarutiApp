@@ -6,7 +6,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
@@ -39,12 +38,15 @@ export default function NewConversationScreen() {
   const [status, setStatus] = useState<ConversationStatus>("dm_received");
   const [notes, setNotes] = useState("");
 
+  const [error, setError] = useState("");
+
   async function handleSave() {
     if (!contactName.trim()) {
-      Alert.alert("Missing name", "Please enter the contact's name.");
+      setError("Please enter the contact's name.");
       return;
     }
 
+    setError("");
     await addConversation({
       contactName: contactName.trim(),
       channel,
@@ -52,9 +54,8 @@ export default function NewConversationScreen() {
       notes: notes.trim(),
     });
 
-    Alert.alert("Conversation Logged!", `${contactName} added to your tracker.`, [
-      { text: "OK", onPress: () => router.back() },
-    ]);
+    // Navigate back immediately — the conversation appears on the tracker
+    router.back();
   }
 
   return (
@@ -73,6 +74,7 @@ export default function NewConversationScreen() {
           </TouchableOpacity>
 
           <Text style={styles.title}>Log Conversation</Text>
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
           <Text style={styles.subtitle}>
             Track every lead from your content
           </Text>
@@ -157,6 +159,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0F1923" },
   scroll: { flex: 1, paddingHorizontal: 16 },
   backBtn: { color: "#9CA3AF", fontSize: 14, marginBottom: 16 },
+  errorText: { color: "#F87171", fontSize: 13, marginBottom: 8 },
   title: { fontSize: 22, fontWeight: "700", color: "#fff", marginBottom: 4 },
   subtitle: { fontSize: 14, color: "#9CA3AF", marginBottom: 24 },
   field: { marginBottom: 24 },

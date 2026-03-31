@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { showConfirm, showAlert } from "../../src/lib/alert";
 import { useRouter } from "expo-router";
 import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
@@ -20,37 +21,24 @@ export default function ManageSubscriptionScreen() {
   } = useSubscription();
 
   function handleCancel() {
-    Alert.alert(
+    showConfirm(
       "Cancel Subscription",
       "Are you sure? You'll lose access to your digest, adaptations, and conversation history.",
-      [
-        { text: "Keep Subscription" },
-        {
-          text: "Cancel",
-          style: "destructive",
-          onPress: async () => {
-            await cancelSubscription();
-            Alert.alert("Cancelled", "Your subscription has been cancelled.");
-          },
-        },
-      ]
+      async () => {
+        await cancelSubscription();
+        showAlert("Cancelled", "Your subscription has been cancelled.");
+      }
     );
   }
 
   function handlePause() {
-    Alert.alert(
+    showConfirm(
       "Pause Subscription",
       "Pause for 1 month at $0. Your data is saved and you can resume anytime.",
-      [
-        { text: "Don't Pause" },
-        {
-          text: "Pause 1 Month",
-          onPress: async () => {
-            await pauseSubscription();
-            Alert.alert("Paused", "Your subscription is paused for 1 month.");
-          },
-        },
-      ]
+      async () => {
+        await pauseSubscription();
+        showAlert("Paused", "Your subscription is paused for 1 month.");
+      }
     );
   }
 

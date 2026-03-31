@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from "react-native";
+import { useState } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
@@ -23,6 +24,7 @@ export default function ConversationDetailScreen() {
   const { conversations, updateStatus, deleteConversation } = useConversationsContext();
 
   const convo = conversations.find((c) => c.id === id);
+  const [statusUpdated, setStatusUpdated] = useState(false);
 
   if (!convo) {
     return (
@@ -47,7 +49,8 @@ export default function ConversationDetailScreen() {
 
   async function handleStatusChange(newStatus: ConversationStatus) {
     await updateStatus(convo.id, newStatus);
-    Alert.alert("Status Updated", `${convo.contact_name} → ${STATUS_CONFIG[newStatus].label}`);
+    setStatusUpdated(true);
+    setTimeout(() => setStatusUpdated(false), 2000);
   }
 
   return (
@@ -102,7 +105,10 @@ export default function ConversationDetailScreen() {
 
         {/* Update Status */}
         <Card>
-          <Text style={styles.cardTitle}>UPDATE STATUS</Text>
+          <View style={styles.statusHeader}>
+            <Text style={styles.cardTitle}>UPDATE STATUS</Text>
+            {statusUpdated && <Text style={styles.savedText}>✓ Saved</Text>}
+          </View>
           <View style={styles.statusGrid}>
             {STATUS_FLOW.map((s) => {
               const sc = STATUS_CONFIG[s];
@@ -128,26 +134,13 @@ export default function ConversationDetailScreen() {
         </Card>
 
         {/* Actions */}
-        <CTAButton
-          label="Add Follow-up Note"
-          onPress={() => Alert.alert("Coming Soon", "Note editing will be available when Supabase is connected.")}
-        />
-
         <TouchableOpacity
           style={styles.deleteBtn}
-          onPress={() =>
-            Alert.alert("Delete?", `Remove ${convo.contact_name} from tracker?`, [
-              { text: "Cancel" },
-              {
-            text: "Delete",
-            style: "destructive",
-            onPress: async () => {
-              await deleteConversation(convo.id);
-              router.back();
-            },
-          },
-            ])
-          }
+          onPress={async () => {
+            if (typeof window !== "undefined" && !window.confirm(`Delete ${convo.contact_name} from tracker?`)) return;
+            await deleteConversation(convo.id);
+            router.back();
+          }}
         >
           <Text style={styles.deleteBtnText}>Delete Conversation</Text>
         </TouchableOpacity>
@@ -187,6 +180,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 8,
   },
+  statusHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  savedText: { color: "#4ADE80", fontSize: 13, fontWeight: "600" },
   notes: { fontSize: 14, color: "#E5E7EB", lineHeight: 22 },
   appointmentDate: { fontSize: 16, fontWeight: "600", color: "#4ADE80" },
   statusGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },

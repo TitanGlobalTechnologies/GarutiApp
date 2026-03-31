@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { showAlert } from "../../src/lib/alert";
 import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
 import Badge from "../../components/Badge";
@@ -89,7 +90,7 @@ export default function RoutineScreen() {
                   label="Mark as Posted ✓"
                   onPress={() => {
                     completeStep(4);
-                    Alert.alert("Posted!", "Great job! Moving to next step.");
+                    showAlert("Posted!", "Great job! Moving to next step.");
                   }}
                 />
               </>
@@ -114,7 +115,7 @@ export default function RoutineScreen() {
                   label="Complete Routine ✓"
                   onPress={() => {
                     completeStep(6);
-                    Alert.alert("🎉 Routine Complete!", "Great work! See you tomorrow morning.");
+                    showAlert("Routine Complete!", "Great work! See you tomorrow morning.");
                   }}
                 />
               </>
