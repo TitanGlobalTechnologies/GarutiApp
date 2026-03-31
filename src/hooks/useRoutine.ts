@@ -16,7 +16,7 @@ export function useRoutine() {
     { id: 2, title: "Pick your Reel for today", description: "1 min — Choose from 5 adaptations", durationMin: 1, status: "done" },
     { id: 3, title: "Customize your adaptation", description: "3 min — Make it yours", durationMin: 3, status: "done" },
     { id: 4, title: "Post it", description: "2 min — Share to Reels + Shorts", durationMin: 2, status: "current" },
-    { id: 5, title: "Log yesterday's conversations", description: "2 min — Update your tracker", durationMin: 2, status: "pending" },
+    { id: 5, title: "Log a new conversation", description: "2 min — Track a lead from your content", durationMin: 2, status: "pending" },
     { id: 6, title: "See streak + weekly focus", description: "1 min — Set your intention", durationMin: 1, status: "pending" },
   ]);
 
