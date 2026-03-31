@@ -4,6 +4,7 @@ import Card from "../../components/Card";
 import Badge from "../../components/Badge";
 import ProgressBar from "../../components/ProgressBar";
 import StepItem from "../../components/StepItem";
+import HighlightGlow from "../../components/HighlightGlow";
 import { useWeeklyFocus } from "../../src/hooks/useWeeklyFocus";
 import { useCoaching } from "../../src/hooks/useCoaching";
 
@@ -24,6 +25,7 @@ export default function FocusScreen() {
         <Text style={styles.title}>This Week's Focus</Text>
 
         {/* AI-Personalized Priority */}
+        <HighlightGlow target="focus-screen">
         <Card borderLeftColor="#60A5FA">
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>AI-PERSONALIZED PRIORITY</Text>
@@ -32,6 +34,7 @@ export default function FocusScreen() {
           <Text style={styles.focusTitle}>{focus.focusTitle}</Text>
           <Text style={styles.focusDesc}>{focus.focusDescription}</Text>
         </Card>
+        </HighlightGlow>
 
         {/* This Week's Actions */}
         <Card>

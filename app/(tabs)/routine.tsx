@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
-import { useUI } from "../../src/providers/UIProvider";
+import { useRouter } from "expo-router";
 import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
 import Badge from "../../components/Badge";
@@ -7,8 +7,14 @@ import ProgressBar from "../../components/ProgressBar";
 import StepItem from "../../components/StepItem";
 import CTAButton from "../../components/CTAButton";
 import { useRoutine } from "../../src/hooks/useRoutine";
+import { useRoutineHighlight } from "../../src/providers/RoutineProvider";
+import { useUI } from "../../src/providers/UIProvider";
+import { MOCK_DIGEST_CONTENT } from "../../src/data/mock-digest";
 
 export default function RoutineScreen() {
+  const router = useRouter();
+  const { showToast } = useUI();
+  const { setHighlight } = useRoutineHighlight();
   const {
     steps,
     currentStep,
@@ -20,7 +26,66 @@ export default function RoutineScreen() {
     resetRoutine,
     isComplete,
   } = useRoutine();
-  const { showToast } = useUI();
+
+  // Each step navigates to the relevant screen and highlights the target area
+  function handleStepTap(stepId: number) {
+    const step = steps.find((s) => s.id === stepId);
+    if (!step) return;
+
+    // Complete the step
+    completeStep(stepId);
+
+    // Navigate to the right place with a highlight cue
+    switch (stepId) {
+      case 1: // Open today's digest
+        setHighlight("digest-screen", 3000);
+        router.push("/(tabs)");
+        break;
+
+      case 2: // Pick your Reel for today
+        setHighlight("digest-reels-list", 3500);
+        router.push("/(tabs)");
+        break;
+
+      case 3: // Customize your adaptation
+        setHighlight("adaptation-versions", 3500);
+        // Navigate to the first post's adaptation screen
+        if (MOCK_DIGEST_CONTENT[0]) {
+          router.push({
+            pathname: "/adaptation/[url]",
+            params: {
+              url: encodeURIComponent(MOCK_DIGEST_CONTENT[0].url),
+              title: MOCK_DIGEST_CONTENT[0].title,
+            },
+          });
+        }
+        break;
+
+      case 4: // Post it
+        setHighlight("adaptation-post-button", 3500);
+        if (MOCK_DIGEST_CONTENT[0]) {
+          router.push({
+            pathname: "/adaptation/[url]",
+            params: {
+              url: encodeURIComponent(MOCK_DIGEST_CONTENT[0].url),
+              title: MOCK_DIGEST_CONTENT[0].title,
+            },
+          });
+        }
+        break;
+
+      case 5: // Log yesterday's conversations
+        setHighlight("tracker-log-button", 3500);
+        router.push("/(tabs)/tracker");
+        break;
+
+      case 6: // See streak + weekly focus
+        setHighlight("focus-screen", 3000);
+        router.push("/(tabs)/focus");
+        showToast({ message: "🎉 Routine Complete! See you tomorrow.", type: "success", duration: 3000 });
+        break;
+    }
+  }
 
   return (
     <SafeArea style={styles.container} edges={["top"]}>
@@ -29,9 +94,7 @@ export default function RoutineScreen() {
         <View style={styles.headerRow}>
           <Text style={styles.title}>Morning Routine</Text>
           <View style={styles.timerCol}>
-            <Text style={styles.timerValue}>
-              {completedMinutes}:{((completedMinutes % 1) * 60).toFixed(0).padStart(2, "0")}
-            </Text>
+            <Text style={styles.timerValue}>{completedMinutes}</Text>
             <Text style={styles.timerLabel}>of {totalMinutes} min</Text>
           </View>
         </View>
@@ -39,17 +102,13 @@ export default function RoutineScreen() {
         <ProgressBar progress={progress} color="#F97316" />
         <View style={{ height: 16 }} />
 
-        {/* Steps checklist */}
+        {/* Steps checklist — each step is tappable and navigates */}
         <Card>
           {steps.map((step) => (
             <TouchableOpacity
               key={step.id}
-              onPress={() => {
-                if (step.status === "current") {
-                  completeStep(step.id);
-                }
-              }}
-              disabled={step.status === "pending"}
+              onPress={() => handleStepTap(step.id)}
+              activeOpacity={0.6}
             >
               <StepItem
                 title={step.title}
@@ -68,61 +127,6 @@ export default function RoutineScreen() {
             <Text style={styles.intentionText}>"{intention}"</Text>
           </View>
         </Card>
-
-        {/* Active Step Detail */}
-        {currentStep && !isComplete && (
-          <Card>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>ACTIVE STEP: {currentStep.title.toUpperCase()}</Text>
-              <Badge label="Now" variant="orange" />
-            </View>
-            {currentStep.id === 4 && (
-              <>
-                <Text style={styles.activeDesc}>
-                  Your adapted script is ready. Record a 30-60 second Reel using this hook:
-                </Text>
-                <View style={styles.hookBox}>
-                  <Text style={styles.hookText}>
-                    "Everyone's talking about Cape Coral flooding — here's what nobody tells you
-                    about the NEW construction zones..."
-                  </Text>
-                </View>
-                <CTAButton
-                  label="Mark as Posted ✓"
-                  onPress={() => {
-                    completeStep(4);
-                    showToast({ message: "Posted! Moving to next step.", type: "success" });
-                  }}
-                />
-              </>
-            )}
-            {currentStep.id === 5 && (
-              <>
-                <Text style={styles.activeDesc}>
-                  Open your conversation tracker and log any DMs, comments, or calls from yesterday.
-                </Text>
-                <CTAButton
-                  label="Open Tracker"
-                  onPress={() => completeStep(5)}
-                />
-              </>
-            )}
-            {currentStep.id === 6 && (
-              <>
-                <Text style={styles.activeDesc}>
-                  Check your streak and review this week's focus area.
-                </Text>
-                <CTAButton
-                  label="Complete Routine ✓"
-                  onPress={() => {
-                    completeStep(6);
-                    showToast({ message: "🎉 Routine Complete! See you tomorrow.", type: "success", duration: 3000 });
-                  }}
-                />
-              </>
-            )}
-          </Card>
-        )}
 
         {/* Completed state */}
         {isComplete && (
@@ -165,10 +169,6 @@ const styles = StyleSheet.create({
     fontSize: 13, fontWeight: "600", color: "#9CA3AF",
     textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8,
   },
-  cardHeader: {
-    flexDirection: "row", justifyContent: "space-between",
-    alignItems: "center", marginBottom: 10,
-  },
   intentionBox: {
     backgroundColor: "#0F1923",
     borderRadius: 10,
@@ -178,18 +178,6 @@ const styles = StyleSheet.create({
   },
   intentionText: {
     fontSize: 14, color: "#E5E7EB", fontStyle: "italic", lineHeight: 22,
-  },
-  activeDesc: {
-    fontSize: 13, color: "#E5E7EB", lineHeight: 20, marginBottom: 10,
-  },
-  hookBox: {
-    backgroundColor: "#0F1923",
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 4,
-  },
-  hookText: {
-    fontSize: 14, fontWeight: "600", color: "#FBBF24", lineHeight: 20,
   },
   completeRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   completeIcon: { fontSize: 32 },

@@ -7,6 +7,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider, useAuthContext } from "../src/providers/AuthProvider";
 import { ConversationsProvider } from "../src/providers/ConversationsProvider";
 import { UIProvider } from "../src/providers/UIProvider";
+import { RoutineProvider } from "../src/providers/RoutineProvider";
 import PhoneFrame from "../components/PhoneFrame";
 
 function RootNavigator() {
@@ -59,9 +60,11 @@ export default function RootLayout() {
       <AuthProvider>
         <ConversationsProvider>
           <UIProvider>
-            <PhoneFrame>
-              <RootNavigator />
-            </PhoneFrame>
+            <RoutineProvider>
+              <PhoneFrame>
+                <RootNavigator />
+              </PhoneFrame>
+            </RoutineProvider>
           </UIProvider>
         </ConversationsProvider>
       </AuthProvider>

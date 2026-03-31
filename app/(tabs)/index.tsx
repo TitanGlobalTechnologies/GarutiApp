@@ -5,6 +5,7 @@ import Card from "../../components/Card";
 import Badge from "../../components/Badge";
 import ItemRow from "../../components/ItemRow";
 import CTAButton from "../../components/CTAButton";
+import HighlightGlow from "../../components/HighlightGlow";
 import { useDigest } from "../../src/hooks/useDigest";
 
 function formatViews(n: number): string {
@@ -64,6 +65,7 @@ export default function DigestScreen() {
         </View>
 
         {/* Top Performing Content */}
+        <HighlightGlow target="digest-reels-list">
         <Card>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>TOP PERFORMING CONTENT</Text>
@@ -95,6 +97,7 @@ export default function DigestScreen() {
             </TouchableOpacity>
           ))}
         </Card>
+        </HighlightGlow>
 
         {/* Top Adaptation Preview */}
         {topAdaptation && (

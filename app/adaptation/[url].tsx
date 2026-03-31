@@ -8,6 +8,7 @@ import {
   Platform,
 } from "react-native";
 import { useUI } from "../../src/providers/UIProvider";
+import HighlightGlow from "../../components/HighlightGlow";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
@@ -53,6 +54,7 @@ export default function AdaptationDetailScreen() {
         </Text>
 
         {/* Version Selector */}
+        <HighlightGlow target="adaptation-versions">
         <View style={styles.versionRow}>
           {[1, 2, 3, 4, 5].map((v) => (
             <TouchableOpacity
@@ -74,6 +76,7 @@ export default function AdaptationDetailScreen() {
             </TouchableOpacity>
           ))}
         </View>
+        </HighlightGlow>
 
         {selected && (
           <>
@@ -137,6 +140,7 @@ export default function AdaptationDetailScreen() {
             </Card>
 
             {/* Actions */}
+            <HighlightGlow target="adaptation-post-button">
             <CTAButton
               label="Mark as Posted ✓"
               onPress={() => {
@@ -144,6 +148,7 @@ export default function AdaptationDetailScreen() {
                 setTimeout(() => router.back(), 1200);
               }}
             />
+            </HighlightGlow>
 
             <TouchableOpacity style={styles.originalLink}>
               <Text style={styles.originalLinkText}>View Original Post →</Text>

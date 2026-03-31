@@ -65,6 +65,7 @@ GarutiApp/
 │   ├── StatBox.tsx               # Stat display box (number + label)
 │   ├── Toast.tsx                 # In-app slide-down notification (success/error/info)
 │   ├── ConfirmModal.tsx          # In-app confirmation dialog with cancel/confirm buttons
+│   ├── HighlightGlow.tsx         # Animated orange pulse border — shows where to take action
 │   └── StepItem.tsx              # Step/checklist item (done/current/pending)
 ├── src/
 │   ├── constants/
@@ -100,7 +101,8 @@ GarutiApp/
 │   ├── providers/
 │   │   ├── AuthProvider.tsx      # App-wide auth context provider
 │   │   ├── ConversationsProvider.tsx  # Shared conversation state across all screens
-│   │   └── UIProvider.tsx        # In-app Toast notifications + ConfirmModal dialogs
+│   │   ├── UIProvider.tsx         # In-app Toast notifications + ConfirmModal dialogs
+│   │   └── RoutineProvider.tsx   # Routine step → screen highlight system
 │   └── types/
 │       └── database.ts           # TypeScript types for all 14 database tables
 ├── supabase/
@@ -289,11 +291,14 @@ The app is **fully functional with mock data**. Your team can demo the entire fl
 20. **Badges** → 6 earned (🎓📱💬📅🔥🏠), 3 locked (⚡🎯👑)
 21. **Onboarding checklist** → 7/7 steps complete with progress bar
 22. **90-Day Progress** → Posts (38), Conversations (47), Appointments (3), Closings (1)
-23. **Routine tab (V2)** → 6-step morning routine with timer (5min/10min)
-24. **Tap steps** → Complete each step in order, current step highlighted in orange
-25. **Today's Intention** → Daily affirmation card
-26. **Active step** → Detailed instructions with script hook for "Post it" step
-27. **Routine complete** → 🎉 celebration card with "Reset for Testing" option
+23. **Routine tab (V2)** → 6-step morning routine with timer
+24. **Tap "Open today's digest"** → Navigates to Digest tab, completes step
+25. **Tap "Pick your Reel"** → Navigates to Digest, orange pulse highlights the Reels list
+26. **Tap "Customize adaptation"** → Opens Adaptation screen, highlights version selector V1-V5
+27. **Tap "Post it"** → Opens Adaptation screen, highlights "Mark as Posted" button
+28. **Tap "Log conversations"** → Opens Tracker, highlights "+ Log New" button with orange pulse
+29. **Tap "See streak + focus"** → Opens Focus tab, highlights priority card, completion toast
+30. **Routine complete** → 🎉 celebration card with "Reset for Testing" option
 28. **Focus tab (V2)** → AI-personalized priority ("Improve Conversation Starters")
 29. **Weekly actions** → Tap to toggle 3 action items (checkable checklist)
 30. **AI Insight** → 🤖 data-driven recommendation from tracker data

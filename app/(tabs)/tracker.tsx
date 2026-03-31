@@ -6,6 +6,7 @@ import Badge from "../../components/Badge";
 import StatBox from "../../components/StatBox";
 import ItemRow from "../../components/ItemRow";
 import CTAButton from "../../components/CTAButton";
+import HighlightGlow from "../../components/HighlightGlow";
 import { useConversationsContext } from "../../src/providers/ConversationsProvider";
 import { STATUS_CONFIG, CHANNEL_ICONS } from "../../src/data/mock-conversations";
 import type { ConversationStatus } from "../../src/types/database";
@@ -129,10 +130,12 @@ export default function TrackerScreen() {
           })}
         </Card>
 
-        <CTAButton
-          label="+ Log New Conversation"
-          onPress={() => router.push("/conversation/new")}
-        />
+        <HighlightGlow target="tracker-log-button">
+          <CTAButton
+            label="+ Log New Conversation"
+            onPress={() => router.push("/conversation/new")}
+          />
+        </HighlightGlow>
         <View style={{ height: 24 }} />
       </ScrollView>
     </SafeArea>
