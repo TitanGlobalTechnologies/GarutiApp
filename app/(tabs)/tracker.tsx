@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, ScrollView } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
 import Badge from "../../components/Badge";
 import StatBox from "../../components/StatBox";
@@ -8,7 +8,7 @@ import CTAButton from "../../components/CTAButton";
 
 export default function TrackerScreen() {
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeArea style={styles.container} edges={["top"]}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Conversations</Text>
 
@@ -82,7 +82,7 @@ export default function TrackerScreen() {
         <CTAButton label="+ Log New Conversation" onPress={() => {}} />
         <View style={{ height: 24 }} />
       </ScrollView>
-    </SafeAreaView>
+    </SafeArea>
   );
 }
 

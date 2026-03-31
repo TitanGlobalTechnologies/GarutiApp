@@ -1,11 +1,11 @@
 import { View, Text, StyleSheet, ScrollView } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
 import ProgressBar from "../../components/ProgressBar";
 
 export default function ProfileScreen() {
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeArea style={styles.container} edges={["top"]}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Profile</Text>
 
@@ -65,7 +65,7 @@ export default function ProfileScreen() {
         </Card>
         <View style={{ height: 24 }} />
       </ScrollView>
-    </SafeAreaView>
+    </SafeArea>
   );
 }
 

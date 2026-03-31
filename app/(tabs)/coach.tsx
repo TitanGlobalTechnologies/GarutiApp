@@ -1,12 +1,12 @@
 import { View, Text, StyleSheet, ScrollView } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
 import ProgressBar from "../../components/ProgressBar";
 import ItemRow from "../../components/ItemRow";
 
 export default function CoachScreen() {
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeArea style={styles.container} edges={["top"]}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Coaching Home</Text>
 
@@ -96,7 +96,7 @@ export default function CoachScreen() {
         </Card>
         <View style={{ height: 24 }} />
       </ScrollView>
-    </SafeAreaView>
+    </SafeArea>
   );
 }
 

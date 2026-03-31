@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, ScrollView } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
 import Badge from "../../components/Badge";
 import ItemRow from "../../components/ItemRow";
@@ -7,7 +7,7 @@ import CTAButton from "../../components/CTAButton";
 
 export default function DigestScreen() {
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeArea style={styles.container} edges={["top"]}>
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>Your Daily Digest</Text>
 
@@ -84,7 +84,7 @@ export default function DigestScreen() {
         <CTAButton label="See All 5 Adaptations" onPress={() => {}} />
         <View style={{ height: 24 }} />
       </ScrollView>
-    </SafeAreaView>
+    </SafeArea>
   );
 }
 
