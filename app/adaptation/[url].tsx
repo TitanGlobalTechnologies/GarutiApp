@@ -84,63 +84,21 @@ export default function AdaptationDetailScreen() {
 
         {selected && (
           <>
-            {/* Hook */}
+            {/* Script */}
             <Card>
               <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>HOOK</Text>
+                <Text style={styles.cardTitle}>SCRIPT</Text>
                 <Badge label={`Version ${selected.versionNumber}`} variant="orange" />
-              </View>
-              <Text style={styles.hookText}>"{selected.hook}"</Text>
-              <TouchableOpacity
-                style={styles.copyBtn}
-                onPress={() => copyToClipboard(selected.hook, 0)}
-              >
-                <Text style={styles.copyBtnText}>
-                  {copiedIndex === 0 ? "Copied!" : "Copy Hook"}
-                </Text>
-              </TouchableOpacity>
-            </Card>
-
-            {/* Full Script */}
-            <Card>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>FULL SCRIPT</Text>
-                <Text style={styles.duration}>~45 sec</Text>
               </View>
               <Text style={styles.scriptText}>{selected.fullScript}</Text>
               <TouchableOpacity
                 style={styles.copyBtn}
-                onPress={() => copyToClipboard(selected.fullScript, 1)}
+                onPress={() => copyToClipboard(selected.fullScript, 0)}
               >
                 <Text style={styles.copyBtnText}>
-                  {copiedIndex === 1 ? "Copied!" : "Copy Script"}
+                  {copiedIndex === 0 ? "Copied!" : "Copy Script"}
                 </Text>
               </TouchableOpacity>
-            </Card>
-
-            {/* CTA */}
-            <Card>
-              <Text style={styles.cardTitle}>CALL-TO-ACTION</Text>
-              <Text style={[styles.ctaText, { marginTop: 8 }]}>"{selected.cta}"</Text>
-              <TouchableOpacity
-                style={styles.copyBtn}
-                onPress={() => copyToClipboard(selected.cta, 2)}
-              >
-                <Text style={styles.copyBtnText}>
-                  {copiedIndex === 2 ? "Copied!" : "Copy CTA"}
-                </Text>
-              </TouchableOpacity>
-            </Card>
-
-            {/* Posting Time */}
-            <Card>
-              <View style={styles.timeRow}>
-                <Text style={styles.timeIcon}>🕐</Text>
-                <View>
-                  <Text style={styles.cardTitle}>BEST TIME TO POST</Text>
-                  <Text style={styles.timeText}>{selected.suggestedPostTime}</Text>
-                </View>
-              </View>
             </Card>
 
             {/* Actions */}
