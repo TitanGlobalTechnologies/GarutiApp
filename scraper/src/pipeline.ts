@@ -2,43 +2,40 @@
  * Main Scraper Pipeline
  *
  * Runs once daily per market:
- * 1. Google Custom Search → find Instagram Reel URLs
+ * 1. SerpAPI → discover Instagram Reel URLs by location
  * 2. Fetch engagement data for each URL
  * 3. Score by virality
  * 4. Pick top 5 (skip repeats unless super viral)
- * 5. Output JSON for the app to consume
+ * 5. Generate conversion-optimized script per Reel (Claude, cached)
+ * 6. Output JSON for the app to consume
  */
 
 import { config, Market } from "./config";
-import { searchInstagramReels, GoogleResult } from "./google-search";
-import { getReelEngagement, ReelEngagement } from "./instagram";
+import { discoverReels } from "./serpapi";
+import { getReelEngagement } from "./instagram";
 import { scoreAndRank, pickTop, ScoredContent } from "./virality";
+import { generateScript, getCachedScript } from "./script-generator";
 import * as fs from "fs";
 import * as path from "path";
 
 const OUTPUT_DIR = path.resolve(__dirname, "../output");
 const HISTORY_FILE = path.join(OUTPUT_DIR, "shown_history.json");
 
-/**
- * Load previously shown shortcodes to avoid repeats
- */
+export interface DigestItem extends ScoredContent {
+  script: string;
+}
+
 function loadHistory(): Set<string> {
   try {
     if (fs.existsSync(HISTORY_FILE)) {
-      const data = JSON.parse(fs.readFileSync(HISTORY_FILE, "utf-8"));
-      return new Set(data);
+      return new Set(JSON.parse(fs.readFileSync(HISTORY_FILE, "utf-8")));
     }
   } catch {}
   return new Set();
 }
 
-/**
- * Save shown shortcodes
- */
 function saveHistory(shortcodes: Set<string>) {
   if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-
-  // Keep last 500 shortcodes max (rolling window)
   const arr = Array.from(shortcodes).slice(-500);
   fs.writeFileSync(HISTORY_FILE, JSON.stringify(arr, null, 2));
 }
@@ -46,76 +43,96 @@ function saveHistory(shortcodes: Set<string>) {
 /**
  * Run the pipeline for a single market
  */
-async function scrapeMarket(market: Market): Promise<ScoredContent[]> {
-  console.log(`\n=== Scraping: ${market.city}, ${market.state} ${market.zip} ===\n`);
+async function scrapeMarket(market: Market): Promise<DigestItem[]> {
+  console.log(`\n${"=".repeat(50)}`);
+  console.log(`  Scraping: ${market.city}, ${market.state} ${market.zip}`);
+  console.log(`${"=".repeat(50)}\n`);
 
-  // Step 1: Discover Reel URLs via Google
-  console.log("[1/4] Discovering Instagram Reels via Google...");
-  const googleResults = await searchInstagramReels(market.city, market.state);
-  console.log(`  Found ${googleResults.length} candidate URLs`);
+  // Step 1: Discover Reel URLs via SerpAPI
+  console.log("[1/5] Discovering Instagram Reels via SerpAPI...");
+  const serpResults = await discoverReels(market.city, market.state, market.zip);
+  console.log(`  Found ${serpResults.length} candidate URLs\n`);
 
-  if (googleResults.length === 0) {
-    console.log("  No results found. Check your Google CSE key and CX.");
+  if (serpResults.length === 0) {
+    console.log("  No results found. Check your SerpAPI key.");
     return [];
   }
 
-  // Step 2: Fetch engagement data for each
-  console.log("[2/4] Fetching engagement data...");
-  const reels: ReelEngagement[] = [];
+  // Step 2: Fetch engagement data
+  console.log("[2/5] Fetching engagement data...");
+  const reels = [];
 
-  for (const result of googleResults) {
-    // Only process actual Reel URLs
+  for (const result of serpResults) {
     if (!result.url.includes("instagram.com/reel/") && !result.url.includes("instagram.com/p/")) {
       continue;
     }
-
     const engagement = await getReelEngagement(result.url, result.snippet);
     if (engagement) {
-      // Use Google title if oEmbed didn't return one
       if (!engagement.title && result.title) {
         engagement.title = result.title.replace(" | Instagram", "").replace(" on Instagram", "").trim();
       }
       reels.push(engagement);
     }
-
-    // Small delay to be respectful
     await new Promise((r) => setTimeout(r, 200));
   }
-  console.log(`  Got engagement data for ${reels.length} Reels`);
+  console.log(`  Got engagement data for ${reels.length} Reels\n`);
 
   // Step 3: Score by virality
-  console.log("[3/4] Calculating virality scores...");
+  console.log("[3/5] Calculating virality scores...");
   const scored = scoreAndRank(reels);
 
   // Step 4: Pick top 5, skip repeats
+  console.log("[4/5] Selecting top 5...");
   const history = loadHistory();
   const top = pickTop(scored, config.topN, history);
 
-  // Update history
   for (const item of top) {
     history.add(item.shortcode);
   }
   saveHistory(history);
 
-  console.log(`[4/4] Selected top ${top.length} Reels:`);
+  console.log(`  Selected ${top.length} Reels:\n`);
   for (const item of top) {
-    console.log(`  👾 ${item.viralityScore} — ${item.title.slice(0, 60)}... (${item.views.toLocaleString()} views)`);
+    console.log(`  👾 ${item.viralityScore} — ${item.title.slice(0, 55)}... (${item.views.toLocaleString()} views)`);
   }
 
-  return top;
+  // Step 5: Generate scripts with Claude (cached)
+  console.log(`\n[5/5] Generating scripts with Claude...`);
+  const digestItems: DigestItem[] = [];
+
+  for (const item of top) {
+    const script = await generateScript({
+      shortcode: item.shortcode,
+      title: item.title,
+      caption: item.title, // Use title as caption if we don't have full caption
+      city: market.city,
+      state: market.state,
+      views: item.views,
+      likes: item.likes,
+      comments: item.comments,
+    });
+
+    digestItems.push({ ...item, script });
+  }
+
+  console.log(`\n  ✅ ${digestItems.length} scripts ready\n`);
+  return digestItems;
 }
 
 /**
  * Run the full pipeline for all configured markets
  */
-export async function runPipeline(): Promise<Record<string, ScoredContent[]>> {
-  console.log("╔══════════════════════════════════════════╗");
-  console.log("║   LAE Content Scraper — Daily Run        ║");
-  console.log(`║   Mode: ${config.mode.toUpperCase().padEnd(32)}║`);
-  console.log(`║   Markets: ${config.markets.length.toString().padEnd(29)}║`);
-  console.log("╚══════════════════════════════════════════╝");
+export async function runPipeline(): Promise<Record<string, DigestItem[]>> {
+  console.log("");
+  console.log("╔══════════════════════════════════════════════╗");
+  console.log("║   LAE Content Scraper + Script Generator     ║");
+  console.log(`║   Mode: ${config.mode.toUpperCase().padEnd(36)}║`);
+  console.log(`║   Markets: ${config.markets.length.toString().padEnd(34)}║`);
+  console.log(`║   SerpAPI Key: ${config.serpApiKey ? "✓ Set" : "✗ Missing"}${"".padEnd(26)}║`);
+  console.log(`║   Claude Key: ${config.anthropicKey ? "✓ Set" : "✗ Missing"}${"".padEnd(27)}║`);
+  console.log("╚══════════════════════════════════════════════╝");
 
-  const results: Record<string, ScoredContent[]> = {};
+  const results: Record<string, DigestItem[]> = {};
 
   for (const market of config.markets) {
     const key = `${market.city}_${market.state}`;
@@ -125,13 +142,19 @@ export async function runPipeline(): Promise<Record<string, ScoredContent[]>> {
   // Save output
   if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
-  const outputFile = path.join(OUTPUT_DIR, `digest_${new Date().toISOString().split("T")[0]}.json`);
+  const dateStr = new Date().toISOString().split("T")[0];
+  const outputFile = path.join(OUTPUT_DIR, `digest_${dateStr}.json`);
   fs.writeFileSync(outputFile, JSON.stringify(results, null, 2));
-  console.log(`\n✅ Results saved to: ${outputFile}`);
+  console.log(`📁 Results saved to: ${outputFile}`);
 
   // Summary
   const totalPosts = Object.values(results).reduce((sum, r) => sum + r.length, 0);
-  console.log(`\n📊 Total: ${totalPosts} posts across ${config.markets.length} markets`);
+  const totalScripts = Object.values(results).reduce(
+    (sum, r) => sum + r.filter((i) => i.script && !i.script.startsWith("[Script")).length,
+    0
+  );
+  console.log(`\n📊 Summary: ${totalPosts} posts, ${totalScripts} scripts generated`);
+  console.log(`💰 SerpAPI searches used: ${config.mode === "live" ? config.markets.length * 2 : 0}`);
 
   return results;
 }
