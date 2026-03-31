@@ -1,7 +1,7 @@
 # GarutiApp — Team Setup Guide
 
 **Last Updated:** March 31, 2026
-**Status:** Phase 1-4 Complete (Auth + Digest + Tracker + Coaching + Gamification)
+**Status:** Phase 1-7 Complete (Full V1 + V2 demo-ready with mock data)
 
 ---
 
@@ -18,6 +18,7 @@
 | 5 | **Phase 2: Daily Digest Engine** — Content discovery pipeline (Google Search → YouTube/Reddit/Twitter APIs), Gemini AI adaptation engine, Adaptation detail screen with V1-V5 selector + copy-to-clipboard | 12 files |
 | 6 | **Phase 3: Conversation Tracker** — Full conversation logging (contact, channel, status, notes), pipeline view with status counts, weekly bar chart, conversation detail screen with status updates, "Log New" form with channel/status chips | 5 files |
 | 7 | **Phase 4: Coaching + Gamification** — Full coaching home (12-week curriculum, next session, join button, past sessions with recordings), 90-day guarantee tracker with milestone timeline, accountability pods with member stats, streak system (milestones at 7/14/30/60/90 days, freeze logic), 9 badges/achievements, 7-step onboarding checklist, rebuilt profile with all systems integrated | 7 files |
+| 8 | **Phases 5-7: Payments + Notifications + V2** — Pricing screen (3 tiers with feature lists), subscription management (cancel/pause/change), trial countdown banner, useSubscription hook with feature gating, notification preferences, trial banner component, Morning Routine screen (6-step guided flow with timer), Weekly Focus screen (AI-personalized priorities + action checklist + AI insight), 6-tab navigation (Digest/Routine/Tracker/Focus/Coach/Profile) | 12 files |
 
 ### Project Structure
 
@@ -36,12 +37,17 @@ GarutiApp/
 │   ├── conversation/             # Conversation management screens
 │   │   ├── new.tsx               # Log new conversation (contact, channel selector, status, notes)
 │   │   └── [id].tsx              # Conversation detail (notes, appointment, status update, delete)
+│   ├── subscription/             # Payments and subscription management
+│   │   ├── pricing.tsx           # 3-tier pricing (SaaS $99, Bundle $449, Coaching $397) + trial banner
+│   │   └── manage.tsx            # Current plan, trial countdown, cancel/pause, billing portal
 │   └── (tabs)/                   # Main app screens (protected — requires auth)
-│       ├── _layout.tsx           # Bottom tab navigator (Digest, Tracker, Coach, Profile)
+│       ├── _layout.tsx           # Bottom tab navigator (6 tabs: Digest/Routine/Tracker/Focus/Coach/Profile)
 │       ├── index.tsx             # Daily Digest — top content, adaptations, streak, pull-to-refresh
-│       ├── tracker.tsx           # Conversation Tracker — stats, bar chart, contacts
-│       ├── coach.tsx             # Coaching Home — sessions, 90-day tracker, pods
-│       └── profile.tsx           # Profile — user info, progress, settings
+│       ├── routine.tsx           # Morning Routine (V2) — 6-step guided 10-min flow with timer
+│       ├── tracker.tsx           # Conversation Tracker — stats, bar chart, pipeline, contacts
+│       ├── focus.tsx             # Weekly Focus (V2) — AI priority, action checklist, insight, 90-day progress
+│       ├── coach.tsx             # Coaching Home — sessions, 90-day tracker, pods, past recordings
+│       └── profile.tsx           # Profile — streak, badges, onboarding, 90-day progress, settings
 ├── components/                   # Reusable UI components
 │   ├── Badge.tsx                 # Status badge (orange/green/blue/red variants)
 │   ├── Card.tsx                  # Card container with optional accent border
@@ -65,9 +71,14 @@ GarutiApp/
 │   │   ├── useDigest.ts          # Daily digest data hook (mock now, Supabase-ready)
 │   │   ├── useAdaptations.ts     # AI adaptation data hook for a specific post
 │   │   ├── useConversations.ts   # Conversations CRUD hook (add, update status, delete, filter)
+│   │   ├── useConversations.ts   # Conversations CRUD hook (add, update status, delete, filter)
 │   │   ├── useCoaching.ts        # Coaching sessions, pods, 90-day progress, curriculum
 │   │   ├── useStreak.ts          # Streak tracking, milestones, badges, daily activities
-│   │   └── useOnboarding.ts      # 7-step onboarding checklist with progress tracking
+│   │   ├── useOnboarding.ts      # 7-step onboarding checklist with progress tracking
+│   │   ├── useSubscription.ts    # Stripe subscription state, trial countdown, feature gating
+│   │   ├── useNotifications.ts   # Notification preferences + mock notification feed
+│   │   ├── useRoutine.ts         # Morning routine 6-step flow with timer
+│   │   └── useWeeklyFocus.ts     # AI weekly focus, action items, insight
 │   ├── lib/
 │   │   ├── supabase.ts           # Supabase client with AsyncStorage persistence
 │   │   ├── gemini.ts             # Google Gemini AI — generates 5 adaptations per post ($0/mo)
@@ -265,6 +276,17 @@ The app is **fully functional with mock data**. Your team can demo the entire fl
 20. **Badges** → 6 earned (🎓📱💬📅🔥🏠), 3 locked (⚡🎯👑)
 21. **Onboarding checklist** → 7/7 steps complete with progress bar
 22. **90-Day Progress** → Posts (38), Conversations (47), Appointments (3), Closings (1)
+23. **Routine tab (V2)** → 6-step morning routine with timer (5min/10min)
+24. **Tap steps** → Complete each step in order, current step highlighted in orange
+25. **Today's Intention** → Daily affirmation card
+26. **Active step** → Detailed instructions with script hook for "Post it" step
+27. **Routine complete** → 🎉 celebration card with "Reset for Testing" option
+28. **Focus tab (V2)** → AI-personalized priority ("Improve Conversation Starters")
+29. **Weekly actions** → Tap to toggle 3 action items (checkable checklist)
+30. **AI Insight** → 🤖 data-driven recommendation from tracker data
+31. **Pricing screen** → 3-tier cards (SaaS $99 / Bundle $449 / Coaching $397)
+32. **Trial banner** → "8 days left" countdown with "Choose Plan" link
+33. **Manage subscription** → Current plan, cancel/pause/change, billing portal
 
 When API keys are added to `.env.local`, the app switches from mock data to live data automatically.
 
@@ -284,9 +306,15 @@ Reddit requires no API key — it's completely open.
 
 See [CONTENT_DISCOVERY_STRATEGY.md](./CONTENT_DISCOVERY_STRATEGY.md) for the full technical architecture.
 
-## Next Steps (Phase 5: Payments & Trial System)
+## Next Steps (Phase 8: Testing, Polish & Launch)
 
-Phase 5 integrates Stripe for subscription billing ($99/$397/$449 tiers), 14-day free trial with countdown UI, feature gating based on subscription level, and self-serve subscription management.
+All features are built. The remaining work is:
+1. **Connect Supabase** — Create project, run migration, add keys to `.env.local`
+2. **Connect API keys** — Google Search, Gemini, YouTube, Twitter (all free)
+3. **Connect Stripe** — Set up products, webhooks, go live
+4. **Connect Resend** — Email sequences (trial, churn, coaching upsell)
+5. **App Store submission** — iOS build via `eas build`, screenshots, metadata
+6. **QA testing** — Full user journey on iOS, Android, and Web
 
 See [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md) for the complete 18-week roadmap.
 

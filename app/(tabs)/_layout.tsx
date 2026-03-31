@@ -32,11 +32,29 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="routine"
+        options={{
+          title: "Routine",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="sunny-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="tracker"
         options={{
           title: "Tracker",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="focus"
+        options={{
+          title: "Focus",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="flag-outline" size={size} color={color} />
           ),
         }}
       />
