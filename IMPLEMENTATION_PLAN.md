@@ -1,6 +1,6 @@
 # Local Authority Engine — Implementation Plan
 
-**Version:** 1.0
+**Version:** 1.1
 **Date:** March 30, 2026
 **Prepared for:** John Garuti / Titan Global Technologies
 **Product:** Local Authority Engine (LAE) Mobile App + Web
@@ -24,6 +24,48 @@
 12. [Risk Register & Mitigations](#12-risk-register--mitigations)
 13. [Team Roles & Responsibilities](#13-team-roles--responsibilities)
 14. [Cost Projections](#14-cost-projections)
+
+---
+
+## 0. CRITICAL PATH — Do This Before Anything Else
+
+> **These items have lead times and must be started immediately, in parallel with development.**
+
+### Week 0 Actions (Start NOW)
+
+- [ ] **Submit Instagram Graph API App Review** (lead time: 3-10 business days, up to 2 weeks)
+  - Create Facebook Developer account at [developers.facebook.com](https://developers.facebook.com)
+  - Create a Business-type app, add "Instagram Graph API" product
+  - Request permissions: `instagram_basic`, `instagram_manage_insights`, `pages_read_engagement`
+  - Prepare a screencast demo showing your use case (content discovery for real estate agents)
+  - Submit for App Review
+  - **Why first:** This is the single longest lead-time item. Everything else can be set up in a day.
+
+- [ ] **Register Apple Developer Account** ($99/year, approval takes 24-48 hours)
+  - [developer.apple.com/programs/enroll](https://developer.apple.com/programs/enroll)
+  - Required for: iOS push notifications, App Store submission, Apple Sign-In
+
+- [ ] **Register Google Play Developer Account** ($25 one-time, approval takes 24-48 hours)
+  - [play.google.com/console](https://play.google.com/console)
+
+- [ ] **Set up Stripe account and start business verification** (1-2 business days)
+  - [stripe.com](https://stripe.com) — requires EIN and bank account
+
+- [ ] **Register domain** for the web app and email sending (e.g., `localauthorityengine.com`)
+  - Needed for: Resend email domain verification, web deployment, deep links
+
+- [ ] **Set up Apify account** and test Instagram scraping for 2-3 target markets
+  - Confirm data quality before committing to the architecture
+
+### Instagram API Critical Constraint
+
+> **The Instagram Graph API has a hard limit of 30 unique hashtags per 7-day rolling window per user.** This means if you're monitoring 10 markets with 3 hashtags each, you've already hit the limit. This is the single biggest constraint on the content discovery pipeline.
+
+**Recommended hybrid approach:**
+1. Use **Instagram Graph API** for markets where you have < 3 hashtags to monitor (legal, official)
+2. Use **Apify** to supplement discovery for additional markets and hashtags (faster, unlimited, but carries TOS risk)
+3. Build a **manual content submission** fallback where coaches/admins can paste Reel URLs directly
+4. Long-term: consider **BrightData** datasets if scaling to 50+ markets
 
 ---
 
@@ -626,9 +668,38 @@ For each active market (e.g., "Cape Coral, FL"):
 ### 10.1 Instagram Content Discovery
 
 #### The Challenge
-Instagram's official Graph API does **not** support searching or discovering public Reels by location or hashtag for third-party apps. The Graph API is designed for managing your own Instagram account, not scraping others' content.
+Instagram's official Graph API has **severe limitations** for content discovery:
+- **No geographic/location search** for Reels — you cannot filter by city or zip code
+- **30 unique hashtags per 7-day rolling window** per user — this is a hard limit and the single biggest constraint
+- Reels are returned as `media_type=VIDEO`; no dedicated "Reels-only" filter — must filter by `media_product_type=REELS`
+- You **cannot** download or get video file URLs for content you don't own — only `permalink`
 
-#### Recommended Approach: Apify
+#### Official Instagram Graph API (Limited Use)
+
+**When to use it:** For hashtag-based discovery within the 30/week limit, and for features where users connect their own account.
+
+**Setup Steps:**
+1. Create a Facebook Developer account at [developers.facebook.com](https://developers.facebook.com)
+2. Create a new App (type: Business)
+3. Add the "Instagram Graph API" product
+4. Required permissions: `instagram_basic`, `instagram_manage_insights`, `pages_read_engagement`
+5. **Submit for App Review** — prepare a screencast demo. Takes 3-10 business days. **START THIS IMMEDIATELY.**
+6. Get a long-lived access token (60-day expiry, auto-refresh)
+
+**Key Endpoints:**
+- `GET /ig_hashtag_search?q=capecoralrealestate` — find hashtag IDs
+- `GET /{hashtag-id}/top_media` — discover top posts/Reels for a hashtag
+- `GET /{hashtag-id}/recent_media` — discover recent posts/Reels
+- `GET /{media-id}?fields=like_count,comments_count,permalink,media_type,media_product_type`
+
+**Rate Limits:** 200 calls/user/hour. **Max 30 unique hashtags per 7-day rolling window.**
+
+**Practical Impact of the 30-Hashtag Limit:**
+- 10 markets × 3 hashtags each = 30 hashtags = AT THE LIMIT for one week
+- If you need more markets or hashtags, you MUST use Apify or BrightData as a supplement
+- Plan your hashtag list carefully and rotate strategically
+
+#### Recommended Primary Approach: Apify (Supplementing Official API)
 
 **What is Apify?**
 A cloud platform for web scraping and automation with pre-built "actors" (scrapers) for Instagram.
@@ -766,9 +837,16 @@ Keep the same structure that made the original successful.
 ```
 
 **Cost Estimate:**
-- ~500 tokens input + ~2000 tokens output per adaptation set (5 versions)
+- ~500-800 tokens input + ~2000-3000 tokens output per adaptation set (5 versions)
 - 5 content items/day × 100 users = 500 adaptation requests/day
-- Daily cost: ~$2-5/day with Sonnet → ~$60-150/month at 100 users
+- **With Haiku 4.5:** ~$0.001-0.01 per generation batch → ~$5-20/month at 100 users (recommended for production)
+- **With Sonnet 4.6:** ~$2-5/day → ~$60-150/month at 100 users (use for higher quality if needed)
+- **Recommendation:** Use Haiku 4.5 for daily adaptations (bulk), Sonnet 4.6 for weekly focus analysis, Opus 4.6 only for complex reasoning tasks
+
+**Cost Optimization:**
+- Use Claude's **prompt caching** (`cache_control` on system prompts) — can cut costs by up to 90% since the system prompt is identical across all adaptation requests
+- Cache adaptations in database — never regenerate for the same content + same market
+- Batch adaptation generation overnight (off-peak = potentially faster responses)
 
 **Rate Limits:**
 - Tier 1 (new accounts): 50 requests/minute, 40,000 tokens/minute
@@ -864,7 +942,7 @@ Keep the same structure that made the original successful.
 **Gotchas:**
 - Free tier pauses after 1 week of inactivity — use Pro for production
 - Row Level Security (RLS) must be enabled on ALL tables — without it, any user can read/write all data
-- Edge Functions have a 150-second timeout — long-running tasks need background processing
+- Edge Functions have a **60-second execution limit** — long-running tasks (e.g., scraping, batch AI generation) must be handled via Apify or broken into smaller chunks
 - Supabase client in React Native needs `AsyncStorage` adapter for session persistence
 
 ---
