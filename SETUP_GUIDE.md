@@ -1,7 +1,7 @@
 # GarutiApp — Team Setup Guide
 
 **Last Updated:** March 31, 2026
-**Status:** Phase 1-3 Complete (Auth + Database + Daily Digest Engine + Conversation Tracker)
+**Status:** Phase 1-4 Complete (Auth + Digest + Tracker + Coaching + Gamification)
 
 ---
 
@@ -17,6 +17,7 @@
 | 4 | **Phase 1: Auth + Database** — Full auth system, 14-table schema, protected routes, 4 auth screens | 21 files |
 | 5 | **Phase 2: Daily Digest Engine** — Content discovery pipeline (Google Search → YouTube/Reddit/Twitter APIs), Gemini AI adaptation engine, Adaptation detail screen with V1-V5 selector + copy-to-clipboard | 12 files |
 | 6 | **Phase 3: Conversation Tracker** — Full conversation logging (contact, channel, status, notes), pipeline view with status counts, weekly bar chart, conversation detail screen with status updates, "Log New" form with channel/status chips | 5 files |
+| 7 | **Phase 4: Coaching + Gamification** — Full coaching home (12-week curriculum, next session, join button, past sessions with recordings), 90-day guarantee tracker with milestone timeline, accountability pods with member stats, streak system (milestones at 7/14/30/60/90 days, freeze logic), 9 badges/achievements, 7-step onboarding checklist, rebuilt profile with all systems integrated | 7 files |
 
 ### Project Structure
 
@@ -57,12 +58,16 @@ GarutiApp/
 │   │   └── theme.ts              # Colors, spacing, typography matching mockup
 │   ├── data/
 │   │   ├── mock-digest.ts        # Mock data for digest demos (realistic Cape Coral RE content)
-│   │   └── mock-conversations.ts # Mock conversation data + status/channel config maps
+│   │   ├── mock-conversations.ts # Mock conversation data + status/channel config maps
+│   │   └── mock-coaching.ts      # 12-week curriculum, mock sessions, pods, 90-day progress
 │   ├── hooks/
 │   │   ├── useAuth.ts            # Auth hook (signUp, signIn, signOut, resetPassword, updateProfile)
 │   │   ├── useDigest.ts          # Daily digest data hook (mock now, Supabase-ready)
 │   │   ├── useAdaptations.ts     # AI adaptation data hook for a specific post
-│   │   └── useConversations.ts   # Conversations CRUD hook (add, update status, delete, filter)
+│   │   ├── useConversations.ts   # Conversations CRUD hook (add, update status, delete, filter)
+│   │   ├── useCoaching.ts        # Coaching sessions, pods, 90-day progress, curriculum
+│   │   ├── useStreak.ts          # Streak tracking, milestones, badges, daily activities
+│   │   └── useOnboarding.ts      # 7-step onboarding checklist with progress tracking
 │   ├── lib/
 │   │   ├── supabase.ts           # Supabase client with AsyncStorage persistence
 │   │   ├── gemini.ts             # Google Gemini AI — generates 5 adaptations per post ($0/mo)
@@ -252,6 +257,14 @@ The app is **fully functional with mock data**. Your team can demo the entire fl
 12. **Tap conversation** → Detail view with avatar, notes, status update buttons
 13. **"+ Log New"** → Form with channel selector (DM/Comment/Call/Email), status chips, notes
 14. **Update status** → Tap any status to move conversation through the pipeline
+15. **Coach tab** → Next session card with "Join Session" button, 12-week curriculum
+16. **90-Day Guarantee** → 3/10 appointments tracker with milestone timeline dots
+17. **Accountability Pod** → See pod members' streaks, post counts, and last activity
+18. **Past Sessions** → Watch recordings of completed coaching sessions
+19. **Profile tab** → Streak card (🔥12 days, milestones at 7/14/30/60/90)
+20. **Badges** → 6 earned (🎓📱💬📅🔥🏠), 3 locked (⚡🎯👑)
+21. **Onboarding checklist** → 7/7 steps complete with progress bar
+22. **90-Day Progress** → Posts (38), Conversations (47), Appointments (3), Closings (1)
 
 When API keys are added to `.env.local`, the app switches from mock data to live data automatically.
 
@@ -271,9 +284,9 @@ Reddit requires no API key — it's completely open.
 
 See [CONTENT_DISCOVERY_STRATEGY.md](./CONTENT_DISCOVERY_STRATEGY.md) for the full technical architecture.
 
-## Next Steps (Phase 4: Coaching, Gamification & Accountability)
+## Next Steps (Phase 5: Payments & Trial System)
 
-Phase 4 builds the coaching tier experience — session management, 90-day guarantee tracker, accountability pods, streak system, badges, and the 7-step onboarding checklist.
+Phase 5 integrates Stripe for subscription billing ($99/$397/$449 tiers), 14-day free trial with countdown UI, feature gating based on subscription level, and self-serve subscription management.
 
 See [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md) for the complete 18-week roadmap.
 
