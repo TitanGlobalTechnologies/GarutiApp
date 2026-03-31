@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, TextInput, Platform } from "react-native";
+import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity, ActivityIndicator, TextInput, Platform, Linking } from "react-native";
 import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
 import HighlightGlow from "../../components/HighlightGlow";
@@ -124,6 +124,12 @@ export default function DigestScreen() {
                     <Text style={styles.reelMeta}>
                       @{item.creatorHandle} · {formatViews(item.views || item.likes)} {item.views ? "views" : "likes"}
                     </Text>
+                    <TouchableOpacity
+                      onPress={(e) => { e.stopPropagation(); Linking.openURL(item.url); }}
+                      hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                    >
+                      <Text style={styles.viewOriginal}>View original post ↗</Text>
+                    </TouchableOpacity>
                   </View>
                   <View style={styles.engCol}>
                     <Text style={styles.viralIcon}>👾</Text>
@@ -267,6 +273,7 @@ const styles = StyleSheet.create({
   reelContent: { flex: 1 },
   reelTitle: { fontSize: 14, fontWeight: "600", color: "#fff" },
   reelMeta: { fontSize: 11, color: "#6B7280", marginTop: 3 },
+  viewOriginal: { fontSize: 11, color: "#60A5FA", marginTop: 4, fontWeight: "600" },
   engCol: { alignItems: "center", gap: 2 },
   viralIcon: { fontSize: 16 },
   viralScore: { color: "#4ADE80", fontSize: 14, fontWeight: "700" },
