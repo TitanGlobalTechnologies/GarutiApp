@@ -4,7 +4,8 @@ import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
 import Badge from "../../components/Badge";
 import CTAButton from "../../components/CTAButton";
-import { MOCK_CONVERSATIONS, STATUS_CONFIG, CHANNEL_ICONS } from "../../src/data/mock-conversations";
+import { useConversationsContext } from "../../src/providers/ConversationsProvider";
+import { STATUS_CONFIG, CHANNEL_ICONS } from "../../src/data/mock-conversations";
 import type { ConversationStatus } from "../../src/types/database";
 
 const STATUS_FLOW: ConversationStatus[] = [
@@ -19,8 +20,9 @@ const STATUS_FLOW: ConversationStatus[] = [
 export default function ConversationDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { conversations, updateStatus, deleteConversation } = useConversationsContext();
 
-  const convo = MOCK_CONVERSATIONS.find((c) => c.id === id);
+  const convo = conversations.find((c) => c.id === id);
 
   if (!convo) {
     return (
@@ -43,7 +45,8 @@ export default function ConversationDetailScreen() {
     year: "numeric",
   });
 
-  function handleStatusChange(newStatus: ConversationStatus) {
+  async function handleStatusChange(newStatus: ConversationStatus) {
+    await updateStatus(convo.id, newStatus);
     Alert.alert("Status Updated", `${convo.contact_name} → ${STATUS_CONFIG[newStatus].label}`);
   }
 
@@ -135,7 +138,14 @@ export default function ConversationDetailScreen() {
           onPress={() =>
             Alert.alert("Delete?", `Remove ${convo.contact_name} from tracker?`, [
               { text: "Cancel" },
-              { text: "Delete", style: "destructive", onPress: () => router.back() },
+              {
+            text: "Delete",
+            style: "destructive",
+            onPress: async () => {
+              await deleteConversation(convo.id);
+              router.back();
+            },
+          },
             ])
           }
         >

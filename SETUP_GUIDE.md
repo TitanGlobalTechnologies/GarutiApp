@@ -90,7 +90,8 @@ GarutiApp/
 │   │       ├── reddit.ts         # Reddit JSON API ($0 — no key needed, append .json)
 │   │       └── twitter.ts        # Twitter/X API v2 ($0 — 1,500 reads/mo free)
 │   ├── providers/
-│   │   └── AuthProvider.tsx      # App-wide auth context provider
+│   │   ├── AuthProvider.tsx      # App-wide auth context provider
+│   │   └── ConversationsProvider.tsx  # Shared conversation state across all screens
 │   └── types/
 │       └── database.ts           # TypeScript types for all 14 database tables
 ├── supabase/
@@ -243,6 +244,8 @@ The root layout (`app/_layout.tsx`) checks auth state on every navigation. Unaut
 | Decision | What We Chose | Why |
 |---|---|---|
 | Auth persistence | AsyncStorage via Supabase | Session survives app restart on all platforms |
+| Shared state via providers | ConversationsProvider wraps app | Log a conversation on one screen, see it instantly on tracker — single source of truth |
+| Demo mode | isDemoMode flag in supabase.ts | App runs fully without Supabase keys — mock user, mock data, all features work |
 | Auto-profile creation | Postgres trigger on `auth.users` INSERT | User always has a profile row — no race conditions |
 | RLS on all tables | Row-level security policies | Users can only see their own data — no backend middleware needed |
 | Trial defaults | 14-day trial, `subscription_tier: 'trial'` | Set automatically on signup — no manual activation needed |

@@ -13,6 +13,7 @@ import {
 import { useRouter } from "expo-router";
 import SafeArea from "../../components/SafeArea";
 import CTAButton from "../../components/CTAButton";
+import { useConversationsContext } from "../../src/providers/ConversationsProvider";
 import type { ConversationChannel, ConversationStatus } from "../../src/types/database";
 
 const CHANNELS: { value: ConversationChannel; label: string; icon: string }[] = [
@@ -32,19 +33,25 @@ const STATUSES: { value: ConversationStatus; label: string }[] = [
 
 export default function NewConversationScreen() {
   const router = useRouter();
+  const { addConversation } = useConversationsContext();
   const [contactName, setContactName] = useState("");
   const [channel, setChannel] = useState<ConversationChannel>("dm");
   const [status, setStatus] = useState<ConversationStatus>("dm_received");
   const [notes, setNotes] = useState("");
 
-  function handleSave() {
+  async function handleSave() {
     if (!contactName.trim()) {
       Alert.alert("Missing name", "Please enter the contact's name.");
       return;
     }
 
-    // TODO: Call useConversations().addConversation() via context
-    // For now, just navigate back
+    await addConversation({
+      contactName: contactName.trim(),
+      channel,
+      status,
+      notes: notes.trim(),
+    });
+
     Alert.alert("Conversation Logged!", `${contactName} added to your tracker.`, [
       { text: "OK", onPress: () => router.back() },
     ]);

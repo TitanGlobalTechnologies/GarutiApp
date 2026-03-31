@@ -5,6 +5,7 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider, useAuthContext } from "../src/providers/AuthProvider";
+import { ConversationsProvider } from "../src/providers/ConversationsProvider";
 import PhoneFrame from "../components/PhoneFrame";
 
 function RootNavigator() {
@@ -55,9 +56,11 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <StatusBar style="light" />
       <AuthProvider>
-        <PhoneFrame>
-          <RootNavigator />
-        </PhoneFrame>
+        <ConversationsProvider>
+          <PhoneFrame>
+            <RootNavigator />
+          </PhoneFrame>
+        </ConversationsProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

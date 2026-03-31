@@ -6,7 +6,7 @@ import Badge from "../../components/Badge";
 import StatBox from "../../components/StatBox";
 import ItemRow from "../../components/ItemRow";
 import CTAButton from "../../components/CTAButton";
-import { useConversations } from "../../src/hooks/useConversations";
+import { useConversationsContext } from "../../src/providers/ConversationsProvider";
 import { STATUS_CONFIG, CHANNEL_ICONS } from "../../src/data/mock-conversations";
 import type { ConversationStatus } from "../../src/types/database";
 
@@ -23,7 +23,7 @@ function timeAgo(dateStr: string): string {
 
 export default function TrackerScreen() {
   const router = useRouter();
-  const { conversations, stats, loading, refresh } = useConversations();
+  const { conversations, stats, loading, refresh } = useConversationsContext();
 
   const maxBarHeight = 70;
   const maxCount = Math.max(...stats.weeklyTrend.map((d) => d.count), 1);
