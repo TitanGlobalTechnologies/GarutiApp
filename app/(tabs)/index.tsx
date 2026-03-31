@@ -72,7 +72,7 @@ export default function DigestScreen() {
         <Card>
           <View style={styles.cardHeader}>
             <Text style={styles.cardTitle}>TOP PERFORMING CONTENT</Text>
-            <Badge label="Today" variant="orange" />
+            <Text style={styles.viralityLabel}>Virality</Text>
           </View>
           {content.map((item, i) => (
             <TouchableOpacity
@@ -171,6 +171,7 @@ const styles = StyleSheet.create({
   reelTitle: { fontSize: 14, fontWeight: "600", color: "#fff" },
   reelMeta: { fontSize: 11, color: "#6B7280", marginTop: 3 },
   engCol: { alignItems: "center", gap: 2 },
+  viralityLabel: { fontSize: 12, color: "#6B7280", fontWeight: "600" },
   viralIcon: { fontSize: 16 },
   viralScore: { color: "#4ADE80", fontSize: 14, fontWeight: "700" },
   adaptationText: { fontSize: 13, color: "#E5E7EB", lineHeight: 20 },
