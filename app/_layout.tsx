@@ -27,7 +27,7 @@ function RootNavigator() {
     // Demo mode: always go straight to tabs (no auth needed)
     if (isDemoMode) {
       const inTabs = segments[0] === "(tabs)";
-      if (!inTabs && segments[0] !== "adaptation" && segments[0] !== "conversation" && segments[0] !== "subscription") {
+      if (!inTabs && segments[0] !== "adaptation" && segments[0] !== "conversation" && segments[0] !== "subscription" && segments[0] !== "settings") {
         router.replace("/(tabs)");
       }
       return;
