@@ -87,7 +87,7 @@ export default function DigestScreen() {
               <ItemRow
                 rightElement={
                   <View style={styles.engCol}>
-                    <Text style={styles.viralIcon}>🦠</Text>
+                    <Text style={styles.viralIcon}>👾</Text>
                     <Text style={styles.viralScore}>{Math.round(item.engagementRate * 22)}</Text>
                   </View>
                 }
