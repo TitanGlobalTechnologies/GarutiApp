@@ -1,7 +1,7 @@
 # GarutiApp — Team Setup Guide
 
 **Last Updated:** March 31, 2026
-**Status:** Phase 1-2 Complete (Auth + Database + Core UI + Daily Digest Engine)
+**Status:** Phase 1-3 Complete (Auth + Database + Daily Digest Engine + Conversation Tracker)
 
 ---
 
@@ -16,6 +16,7 @@
 | 3 | **Zero-cost architecture v2** — Replaced paid APIs with free alternatives ($0/mo MVP) | 2 files |
 | 4 | **Phase 1: Auth + Database** — Full auth system, 14-table schema, protected routes, 4 auth screens | 21 files |
 | 5 | **Phase 2: Daily Digest Engine** — Content discovery pipeline (Google Search → YouTube/Reddit/Twitter APIs), Gemini AI adaptation engine, Adaptation detail screen with V1-V5 selector + copy-to-clipboard | 12 files |
+| 6 | **Phase 3: Conversation Tracker** — Full conversation logging (contact, channel, status, notes), pipeline view with status counts, weekly bar chart, conversation detail screen with status updates, "Log New" form with channel/status chips | 5 files |
 
 ### Project Structure
 
@@ -31,6 +32,9 @@ GarutiApp/
 │   │   └── forgot-password.tsx   # Email reset flow with confirmation
 │   ├── adaptation/               # Adaptation detail screens
 │   │   └── [url].tsx             # View 5 AI adaptations for a post (V1-V5 selector, copy, mark posted)
+│   ├── conversation/             # Conversation management screens
+│   │   ├── new.tsx               # Log new conversation (contact, channel selector, status, notes)
+│   │   └── [id].tsx              # Conversation detail (notes, appointment, status update, delete)
 │   └── (tabs)/                   # Main app screens (protected — requires auth)
 │       ├── _layout.tsx           # Bottom tab navigator (Digest, Tracker, Coach, Profile)
 │       ├── index.tsx             # Daily Digest — top content, adaptations, streak, pull-to-refresh
@@ -52,11 +56,13 @@ GarutiApp/
 │   ├── constants/
 │   │   └── theme.ts              # Colors, spacing, typography matching mockup
 │   ├── data/
-│   │   └── mock-digest.ts        # Mock data for demos (realistic Cape Coral RE content)
+│   │   ├── mock-digest.ts        # Mock data for digest demos (realistic Cape Coral RE content)
+│   │   └── mock-conversations.ts # Mock conversation data + status/channel config maps
 │   ├── hooks/
 │   │   ├── useAuth.ts            # Auth hook (signUp, signIn, signOut, resetPassword, updateProfile)
 │   │   ├── useDigest.ts          # Daily digest data hook (mock now, Supabase-ready)
-│   │   └── useAdaptations.ts     # AI adaptation data hook for a specific post
+│   │   ├── useAdaptations.ts     # AI adaptation data hook for a specific post
+│   │   └── useConversations.ts   # Conversations CRUD hook (add, update status, delete, filter)
 │   ├── lib/
 │   │   ├── supabase.ts           # Supabase client with AsyncStorage persistence
 │   │   ├── gemini.ts             # Google Gemini AI — generates 5 adaptations per post ($0/mo)
@@ -240,6 +246,12 @@ The app is **fully functional with mock data**. Your team can demo the entire fl
 6. **Copy to clipboard** → Hook, full script, or CTA individually
 7. **Mark as Posted** → Logs to conversation tracker
 8. **Pull to refresh** → Simulates fetching new digest
+9. **Tracker tab** → See 14 conversations this week, 47 this month, 3 appointments
+10. **Pipeline view** → DM Received (1), In Conversation (2), Appointment Set (1), Follow-up (1)
+11. **Weekly bar chart** → Conversations per day with today highlighted
+12. **Tap conversation** → Detail view with avatar, notes, status update buttons
+13. **"+ Log New"** → Form with channel selector (DM/Comment/Call/Email), status chips, notes
+14. **Update status** → Tap any status to move conversation through the pipeline
 
 When API keys are added to `.env.local`, the app switches from mock data to live data automatically.
 
@@ -259,9 +271,9 @@ Reddit requires no API key — it's completely open.
 
 See [CONTENT_DISCOVERY_STRATEGY.md](./CONTENT_DISCOVERY_STRATEGY.md) for the full technical architecture.
 
-## Next Steps (Phase 3: Conversation Tracker)
+## Next Steps (Phase 4: Coaching, Gamification & Accountability)
 
-Phase 3 builds the conversation tracking system so agents can log DMs, comments, and calls with source attribution. This is the data that proves ROI and triggers the coaching upsell.
+Phase 4 builds the coaching tier experience — session management, 90-day guarantee tracker, accountability pods, streak system, badges, and the 7-step onboarding checklist.
 
 See [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md) for the complete 18-week roadmap.
 
