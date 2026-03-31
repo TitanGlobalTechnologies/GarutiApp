@@ -113,12 +113,29 @@ export async function generateScript(params: {
     comments: params.comments,
   });
 
-  // Call Claude
-  const script = await callClaude(CONVERSION_SYSTEM_PROMPT, userPrompt);
+  // Call Claude with retries (handles 529 overloaded errors)
+  let script = "";
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      script = await callClaude(CONVERSION_SYSTEM_PROMPT, userPrompt);
+      break;
+    } catch (err: any) {
+      if (attempt < 3 && (err.message.includes("529") || err.message.includes("overloaded"))) {
+        console.log(`  [script] Claude overloaded, retrying in ${attempt * 5}s... (attempt ${attempt}/3)`);
+        await new Promise((r) => setTimeout(r, attempt * 5000));
+      } else {
+        console.error(`  [script] Claude error: ${err.message}`);
+        script = `[Script generation failed — will retry next run. Topic: ${params.title}]`;
+        break;
+      }
+    }
+  }
 
-  // Cache it forever
-  cacheScript(params.shortcode, script);
-  console.log(`  [script] Generated and cached (${script.split(" ").length} words)`);
+  // Cache it forever (unless it's a failure placeholder)
+  if (!script.startsWith("[Script generation failed")) {
+    cacheScript(params.shortcode, script);
+    console.log(`  [script] Generated and cached (${script.split(" ").length} words)`);
+  }
 
   return script;
 }

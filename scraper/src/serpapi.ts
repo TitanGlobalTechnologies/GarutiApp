@@ -1,12 +1,39 @@
 /**
  * SerpAPI Client — discovers Instagram Reels by location
  *
- * Uses SerpAPI's Google Search endpoint with:
- * - site:instagram.com/reel filter
- * - Location targeting via zip code or city,state
- * - Date filter for recent content (past week)
+ * Strategy: Run multiple query variations, paginate each to 30 results,
+ * collect 100+ unique Reel URLs, pick top 5 by virality.
  *
- * Free tier: 250 searches/month. We use ~2 per location per run.
+ * Budget: ~10 API calls per daily run (10 × 25 days = 250/month)
+ *
+ * MANUAL REPLICATION NOTES (if SerpAPI credits run out):
+ * =====================================================
+ * Each SerpAPI call is equivalent to this Google search:
+ *
+ * 1. Go to google.com
+ * 2. Search: site:instagram.com/reel "cape coral" real estate
+ * 3. Click Tools → Any time → Custom range → 01/01/2026 to 12/31/2026
+ * 4. Copy the first 10 result URLs
+ * 5. Click "Next" for page 2, copy 10 more
+ * 6. Click "Next" for page 3, copy 10 more
+ * 7. Repeat with different search terms:
+ *    - site:instagram.com/reel "cape coral" homes for sale
+ *    - site:instagram.com/reel "cape coral" realtor home tour
+ *    - site:instagram.com/reel "cape coral FL" housing market
+ *
+ * The location parameter makes Google show results as if you're
+ * searching from Cape Coral, FL — so local content ranks higher.
+ *
+ * SerpAPI params we use:
+ *   engine: google
+ *   q: site:instagram.com/reel "cape coral" real estate
+ *   location: Cape Coral,Florida,United States
+ *   gl: us
+ *   hl: en
+ *   tbs: cdr:1,cd_min:01/01/2026,cd_max:12/31/2026  (2026 only)
+ *   num: 10
+ *   start: 0 (page 1), 10 (page 2), 20 (page 3)
+ * =====================================================
  */
 
 import { config } from "./config";
@@ -18,6 +45,7 @@ export interface SerpResult {
   url: string;
   snippet: string;
   position: number;
+  query: string; // which query found this
 }
 
 interface SerpApiResponse {
@@ -34,10 +62,25 @@ interface SerpApiResponse {
   error?: string;
 }
 
+// Query variations — each targets a different angle of Cape Coral RE content
+const QUERY_TEMPLATES = [
+  `site:instagram.com/reel "{city}" real estate`,
+  `site:instagram.com/reel "{city}" homes for sale`,
+  `site:instagram.com/reel "{city}" realtor home tour`,
+  `site:instagram.com/reel "{city} {state}" housing market`,
+];
+
+// How many pages per query (10 results each)
+const PAGES_PER_QUERY = 3; // 3 pages × 10 results = 30 per query
+
 /**
- * Search SerpAPI for Instagram Reels in a specific market
+ * Single SerpAPI call — one page of results
  */
-async function searchLive(query: string, location: string): Promise<SerpResult[]> {
+async function searchPage(
+  query: string,
+  location: string,
+  start: number
+): Promise<SerpResult[]> {
   const params = new URLSearchParams({
     api_key: config.serpApiKey,
     engine: "google",
@@ -45,12 +88,10 @@ async function searchLive(query: string, location: string): Promise<SerpResult[]
     location: location,
     gl: "us",
     hl: "en",
-    tbs: "qdr:w", // past week
+    tbs: "cdr:1,cd_min:01/01/2026,cd_max:12/31/2026", // 2026 only
     num: "10",
+    start: String(start),
   });
-
-  console.log(`  [serpapi] Querying: ${query}`);
-  console.log(`  [serpapi] Location: ${location}`);
 
   const res = await fetch(`https://serpapi.com/search.json?${params}`);
 
@@ -65,107 +106,128 @@ async function searchLive(query: string, location: string): Promise<SerpResult[]
     throw new Error(`SerpAPI error: ${data.error}`);
   }
 
-  const results = (data.organic_results || []).map((item) => ({
+  return (data.organic_results || []).map((item) => ({
     title: item.title,
     url: item.link,
     snippet: item.snippet || "",
-    position: item.position,
+    position: item.position + start,
+    query,
   }));
-
-  console.log(`  [serpapi] Got ${results.length} results`);
-  return results;
 }
 
 /**
  * Load from cached fixture
  */
-function searchMock(query: string): SerpResult[] {
-  const filename = query
-    .replace(/[^a-zA-Z0-9]/g, "_")
-    .replace(/_+/g, "_")
-    .toLowerCase()
-    .slice(0, 80) + ".json";
+function loadMockResults(city: string): SerpResult[] {
+  // Load all google fixtures as fallback
+  const googleDir = path.join(config.fixturesDir, "google");
+  const serpDir = path.join(config.fixturesDir, "serpapi");
+  const allResults: SerpResult[] = [];
 
-  const filepath = path.join(config.fixturesDir, "serpapi", filename);
-
-  if (fs.existsSync(filepath)) {
-    return JSON.parse(fs.readFileSync(filepath, "utf-8"));
+  for (const dir of [serpDir, googleDir]) {
+    if (!fs.existsSync(dir)) continue;
+    for (const file of fs.readdirSync(dir)) {
+      if (!file.endsWith(".json")) continue;
+      if (!file.includes(city.toLowerCase().replace(/\s/g, "_"))) continue;
+      try {
+        const data = JSON.parse(fs.readFileSync(path.join(dir, file), "utf-8"));
+        for (const item of data) {
+          allResults.push({
+            title: item.title,
+            url: item.url || item.link,
+            snippet: item.snippet || "",
+            position: allResults.length + 1,
+            query: "mock",
+          });
+        }
+      } catch {}
+    }
   }
 
-  // Fall back to google fixtures if serpapi fixtures don't exist yet
-  const googlePath = path.join(config.fixturesDir, "google", filename);
-  if (fs.existsSync(googlePath)) {
-    console.log(`  [mock] Using Google fixture as fallback: ${filename}`);
-    const googleResults = JSON.parse(fs.readFileSync(googlePath, "utf-8"));
-    return googleResults.map((r: any, i: number) => ({
-      title: r.title,
-      url: r.url,
-      snippet: r.snippet,
-      position: i + 1,
-    }));
-  }
-
-  console.warn(`  [mock] No fixture found for: ${filename}`);
-  return [];
+  return allResults;
 }
 
 /**
- * Save live results as fixture for future mock runs
+ * Save live results as fixtures
  */
-function saveFixture(query: string, results: SerpResult[]) {
+function saveFixtures(city: string, results: SerpResult[]) {
   const dir = path.join(config.fixturesDir, "serpapi");
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-  const filename = query
-    .replace(/[^a-zA-Z0-9]/g, "_")
-    .replace(/_+/g, "_")
-    .toLowerCase()
-    .slice(0, 80) + ".json";
-
+  const filename = `${city.toLowerCase().replace(/\s/g, "_")}_all_results.json`;
   fs.writeFileSync(path.join(dir, filename), JSON.stringify(results, null, 2));
   console.log(`  [fixture] Saved ${results.length} results → ${filename}`);
 }
 
 /**
- * Discover Instagram Reels for a market using SerpAPI
- * Uses 2 queries per location (burns 2 of 250 monthly searches in live mode)
+ * Discover Instagram Reels for a market
+ *
+ * Live mode: Runs 4 queries × 3 pages = ~10-12 SerpAPI calls
+ * Returns up to 100+ candidate URLs (deduped)
  */
 export async function discoverReels(
   city: string,
   state: string,
   zip: string
-): Promise<SerpResult[]> {
+): Promise<{ results: SerpResult[]; searchesUsed: number }> {
   const location = `${city},${state},United States`;
 
-  const queries = [
-    `site:instagram.com/reel "${city}" real estate`,
-    `site:instagram.com/reel "${city} ${state}" homes realtor`,
-  ];
+  if (config.mode === "mock") {
+    console.log(`  [mock] Loading cached results for ${city}`);
+    const results = loadMockResults(city);
+    console.log(`  [mock] Loaded ${results.length} cached results`);
+    return { results, searchesUsed: 0 };
+  }
 
+  // LIVE MODE
   const allResults: SerpResult[] = [];
+  let searchesUsed = 0;
+
+  const queries = QUERY_TEMPLATES.map((t) =>
+    t.replace("{city}", city).replace("{state}", state)
+  );
 
   for (const query of queries) {
-    console.log(`[search] ${config.mode === "mock" ? "MOCK" : "LIVE"}: ${query}`);
+    for (let page = 0; page < PAGES_PER_QUERY; page++) {
+      const start = page * 10;
+      console.log(`  [serpapi] Query: ${query} (page ${page + 1}, start=${start})`);
 
-    let results: SerpResult[];
+      try {
+        const results = await searchPage(query, location, start);
+        searchesUsed++;
 
-    if (config.mode === "mock") {
-      results = searchMock(query);
-    } else {
-      results = await searchLive(query, location);
-      saveFixture(query, results); // Auto-save for future mock runs
-      // Respect rate limits
-      await new Promise((r) => setTimeout(r, 1000));
+        console.log(`  [serpapi] Got ${results.length} results (total searches used: ${searchesUsed})`);
+        allResults.push(...results);
+
+        // If fewer than 10 results, no more pages for this query
+        if (results.length < 10) break;
+
+        // Rate limit: 1 second between calls
+        await new Promise((r) => setTimeout(r, 1000));
+      } catch (err: any) {
+        console.error(`  [serpapi] Error: ${err.message}`);
+        break; // Stop paginating this query on error
+      }
     }
-
-    allResults.push(...results);
   }
 
   // Deduplicate by URL
   const seen = new Set<string>();
-  return allResults.filter((r) => {
+  const unique = allResults.filter((r) => {
+    // Only keep actual Instagram Reel URLs
+    if (!r.url.includes("instagram.com/reel/") && !r.url.includes("instagram.com/p/")) {
+      return false;
+    }
     if (seen.has(r.url)) return false;
     seen.add(r.url);
     return true;
   });
+
+  console.log(`\n  [serpapi] TOTAL: ${allResults.length} raw → ${unique.length} unique Reel URLs`);
+  console.log(`  [serpapi] Searches used this run: ${searchesUsed}`);
+
+  // Save as fixture for future mock runs
+  saveFixtures(city, unique);
+
+  return { results: unique, searchesUsed };
 }

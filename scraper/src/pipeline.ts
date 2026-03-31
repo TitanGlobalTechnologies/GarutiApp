@@ -50,13 +50,16 @@ async function scrapeMarket(market: Market): Promise<DigestItem[]> {
 
   // Step 1: Discover Reel URLs via SerpAPI
   console.log("[1/5] Discovering Instagram Reels via SerpAPI...");
-  const serpResults = await discoverReels(market.city, market.state, market.zip);
-  console.log(`  Found ${serpResults.length} candidate URLs\n`);
+  console.log("  Target: 100 unique Reel URLs from 2026 only\n");
+  const { results: serpResults, searchesUsed } = await discoverReels(market.city, market.state, market.zip);
+  console.log(`\n  Found ${serpResults.length} unique Reel URLs (used ${searchesUsed} SerpAPI searches)\n`);
 
   if (serpResults.length === 0) {
-    console.log("  No results found. Check your SerpAPI key.");
+    console.log("  No results found. Check your SerpAPI key or try different queries.");
     return [];
   }
+
+  console.log(`  Processing top ${Math.min(serpResults.length, 100)} of ${serpResults.length} results...\n`);
 
   // Step 2: Fetch engagement data
   console.log("[2/5] Fetching engagement data...");
@@ -154,7 +157,11 @@ export async function runPipeline(): Promise<Record<string, DigestItem[]>> {
     0
   );
   console.log(`\n📊 Summary: ${totalPosts} posts, ${totalScripts} scripts generated`);
-  console.log(`💰 SerpAPI searches used: ${config.mode === "live" ? config.markets.length * 2 : 0}`);
+  const totalSearches = config.mode === "live"
+    ? Object.keys(results).length * 12 // ~12 per market
+    : 0;
+  console.log(`💰 SerpAPI searches used this run: ~${totalSearches}`)
+  console.log(`💰 Monthly budget: 250 | Remaining: ~${250 - totalSearches}`);
 
   return results;
 }
