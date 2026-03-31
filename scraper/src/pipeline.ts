@@ -12,7 +12,7 @@
 
 import { config, Market } from "./config";
 import { discoverReels } from "./serpapi";
-import { getReelEngagement } from "./instagram";
+import { getRealEngagement, RealEngagement } from "./instagram-engagement";
 import { scoreAndRank, pickTop, ScoredContent } from "./virality";
 import { generateScript, getCachedScript } from "./script-generator";
 import * as fs from "fs";
@@ -61,24 +61,59 @@ async function scrapeMarket(market: Market): Promise<DigestItem[]> {
 
   console.log(`  Processing top ${Math.min(serpResults.length, 100)} of ${serpResults.length} results...\n`);
 
-  // Step 2: Fetch engagement data
-  console.log("[2/5] Fetching engagement data...");
-  const reels = [];
+  // Step 2: Fetch REAL engagement data from Instagram
+  console.log("[2/5] Fetching REAL engagement data from Instagram...");
+  console.log("  (This checks actual likes/views/comments for each post)\n");
+
+  const MIN_LIKES = 10; // Filter threshold — only keep posts with real engagement
+  const reelsWithEngagement: Array<{
+    shortcode: string;
+    url: string;
+    title: string;
+    authorHandle: string;
+    authorName: string;
+    thumbnailUrl: string;
+    views: number;
+    likes: number;
+    comments: number;
+    caption: string;
+  }> = [];
+
+  let checked = 0;
+  let skipped = 0;
 
   for (const result of serpResults) {
     if (!result.url.includes("instagram.com/reel/") && !result.url.includes("instagram.com/p/")) {
       continue;
     }
-    const engagement = await getReelEngagement(result.url, result.snippet);
-    if (engagement) {
-      if (!engagement.title && result.title) {
-        engagement.title = result.title.replace(" | Instagram", "").replace(" on Instagram", "").trim();
-      }
-      reels.push(engagement);
+
+    const engagement = await getRealEngagement(result.url);
+    checked++;
+
+    if (engagement && engagement.likeCount >= MIN_LIKES) {
+      const title = result.title.replace(" | Instagram", "").replace(" on Instagram:", "").trim();
+      reelsWithEngagement.push({
+        shortcode: engagement.shortcode,
+        url: engagement.url,
+        title: title || engagement.caption.slice(0, 80),
+        authorHandle: engagement.authorUsername,
+        authorName: engagement.authorUsername,
+        thumbnailUrl: "",
+        views: engagement.viewCount,
+        likes: engagement.likeCount,
+        comments: engagement.commentCount,
+        caption: engagement.caption,
+      });
+    } else if (engagement) {
+      skipped++;
     }
-    await new Promise((r) => setTimeout(r, 200));
+
+    // Rate limit: 500ms between requests to be respectful
+    await new Promise((r) => setTimeout(r, 500));
   }
-  console.log(`  Got engagement data for ${reels.length} Reels\n`);
+
+  console.log(`\n  Checked ${checked} posts | Passed filter (${MIN_LIKES}+ likes): ${reelsWithEngagement.length} | Filtered out: ${skipped}\n`);
+  const reels = reelsWithEngagement;
 
   // Step 3: Score by virality
   console.log("[3/5] Calculating virality scores...");
@@ -107,7 +142,7 @@ async function scrapeMarket(market: Market): Promise<DigestItem[]> {
     const script = await generateScript({
       shortcode: item.shortcode,
       title: item.title,
-      caption: item.title, // Use title as caption if we don't have full caption
+      caption: (item as any).caption || item.title,
       city: market.city,
       state: market.state,
       views: item.views,
