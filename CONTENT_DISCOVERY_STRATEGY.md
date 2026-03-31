@@ -1,6 +1,6 @@
 # Content Discovery Strategy — Zero-Cost Architecture
 
-**Version:** 1.2
+**Version:** 1.3
 **Date:** March 31, 2026
 **Status:** ✅ IMPLEMENTED — Code in `src/lib/discovery/` and `src/lib/gemini.ts`
 
@@ -452,7 +452,13 @@ Return as JSON array with keys: hook, script, postingTime, cta`
 | Daily cron pipeline (GitHub Actions) | ⏳ Pending | Needs Supabase + API keys configured |
 | Supabase Edge Function for pipeline | ⏳ Pending | Needs Supabase project set up |
 
-**Next step:** When API keys are added to `.env.local`, swap the mock data hooks to call the real pipeline. The pipeline code is ready.
+**Settings integration (complete):**
+- User's market_city/market_state from Settings → Market Area flows into useDigest()
+  which will pass these to Google Custom Search queries when API keys are added
+- User's content_style from Settings → Content Style flows into useAdaptations()
+  which will pass it as agentStyle to the Gemini prompt
+
+**Next step:** When API keys are added to `.env.local`, swap the mock data hooks to call the real pipeline. The pipeline code is ready. The user's market and style preferences are already wired in.
 
 ---
 

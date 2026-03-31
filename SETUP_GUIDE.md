@@ -19,6 +19,7 @@
 | 6 | **Phase 3: Conversation Tracker** — Full conversation logging (contact, channel, status, notes), pipeline view with status counts, weekly bar chart, conversation detail screen with status updates, "Log New" form with channel/status chips | 5 files |
 | 7 | **Phase 4: Coaching + Gamification** — Full coaching home (12-week curriculum, next session, join button, past sessions with recordings), 90-day guarantee tracker with milestone timeline, accountability pods with member stats, streak system (milestones at 7/14/30/60/90 days, freeze logic), 9 badges/achievements, 7-step onboarding checklist, rebuilt profile with all systems integrated | 7 files |
 | 8 | **Phases 5-7: Payments + Notifications + V2** — Pricing screen (3 tiers with feature lists), subscription management (cancel/pause/change), trial countdown banner, useSubscription hook with feature gating, notification preferences, trial banner component, Morning Routine screen (6-step guided flow with timer), Weekly Focus screen (AI-personalized priorities + action checklist + AI insight), 6-tab navigation (Digest/Routine/Tracker/Focus/Coach/Profile) | 12 files |
+| 9 | **Bug fixes & polish** — Demo mode (app runs without Supabase), in-app Toast + ConfirmModal (no browser prompts), ConversationsProvider (shared state), settings screens wired to pipeline (market drives digest, style drives AI), routine steps navigate to actual screens with highlight cues, settings navigation fixed, save persistence fixed | 20 files |
 
 ### Project Structure
 
@@ -247,6 +248,40 @@ User opens app
 ```
 
 The root layout (`app/_layout.tsx`) checks auth state on every navigation. Unauthenticated users are always redirected to the welcome screen. Authenticated users are always redirected to the tabs.
+
+### Demo Mode (no Supabase keys)
+
+When `EXPO_PUBLIC_SUPABASE_URL` is not set, the app runs in **demo mode**:
+- A mock user "Demo Agent" is created (Cape Coral, FL, 8 years experience)
+- Auth screens are skipped — goes straight to the 6-tab app
+- All data is mock but realistic (Cape Coral real estate content)
+- Settings save to in-memory state (persists during session, resets on refresh)
+- All features work: digest, adaptations, conversations, coaching, streaks, badges
+- Routes allowed: `(tabs)`, `adaptation`, `conversation`, `subscription`, `settings`
+
+### How Settings Flow Through the App
+
+```
+Settings: Market Area → profile.market_city / market_state
+  → Digest header shows dynamic market name
+  → useDigest(city, state) will drive Google Search queries when live
+  → useAdaptations(url, city, style) localizes AI scripts to market
+  → Subscription "what you'll lose" shows user's market
+
+Settings: Content Style → profile.content_style
+  → Parsed back into style + notes on re-visit (survives round-trip)
+  → Passed to useAdaptations → will feed Gemini agentStyle param when live
+
+Settings: Notifications → 6 toggles in useNotifications hook
+  → Will drive Expo Push + Resend triggers when connected
+
+Settings: Subscription → useSubscription hook
+  → Feature gating: hasFeature('digest'|'coaching'|'routine'|etc.)
+  → Trial countdown: trialDaysRemaining
+
+Settings: Account → Auth actions
+  → Sign out, delete account, export data (placeholders for Supabase)
+```
 
 ---
 
