@@ -127,7 +127,7 @@ export default function DigestScreen() {
                   </View>
                   <View style={styles.engCol}>
                     <Text style={styles.viralIcon}>👾</Text>
-                    <Text style={styles.viralScore}>{Math.round(item.engagementRate * 22)}</Text>
+                    <Text style={styles.viralScore}>{Math.round(item.engagementRate)}</Text>
                   </View>
                 </View>
               </TouchableOpacity>

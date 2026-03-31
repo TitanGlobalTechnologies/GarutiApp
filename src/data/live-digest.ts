@@ -1,0 +1,99 @@
+/**
+ * Live digest data — loaded from the scraper output
+ * This file is auto-generated from scraper/output/digest_*.json
+ * When Supabase is connected, this will be replaced by a database query
+ */
+
+import type { DiscoveredContent } from "../lib/content-pipeline";
+import type { ContentAdaptation } from "../lib/gemini";
+
+export interface LiveDigestItem {
+  shortcode: string;
+  url: string;
+  title: string;
+  authorHandle: string;
+  views: number;
+  likes: number;
+  comments: number;
+  viralityScore: number;
+  script: string;
+}
+
+// Real data from scraper run — Cape Coral, FL — March 31, 2026
+export const LIVE_DIGEST: LiveDigestItem[] = [
+  {
+    shortcode: "DV15dKKDYts",
+    url: "https://www.instagram.com/reel/DV15dKKDYts/",
+    title: "Everyone talks about Cape Coral flips — but what if the locals know something investors don't?",
+    authorHandle: "cape_coral_insider",
+    views: 44466,
+    likes: 2405,
+    comments: 301,
+    viralityScore: 94,
+    script: "Everyone talks about Cape Coral flips — but here's what the locals actually know that the out-of-state investors keep missing. There are still pockets in this city where you can buy a 3-bed, 2-bath with Gulf access for under $420K — but those windows are closing fast. I pulled the sales data from the last 60 days, and three specific zip codes saw double-digit price jumps while everyone was focused on the same five streets they saw on YouTube. The investors flying in from Ohio and Texas? They're buying in the wrong corridors and overpaying by $30K to $40K because they don't know what the locals know. I've been tracking every sale in this market for years, and right now there are four properties that haven't hit MLS yet that most buyers will never see. Are you buying in Cape Coral this year — and do you know which zip code you're targeting? Drop it below and I'll tell you exactly what I'm seeing there right now.",
+  },
+  {
+    shortcode: "DWFGYzUEmMa",
+    url: "https://www.instagram.com/reel/DWFGYzUEmMa/",
+    title: "Think Cape Coral's flood insurance is a dealbreaker? Think again.",
+    authorHandle: "berry_cessna_realtor",
+    views: 43980,
+    likes: 2197,
+    comments: 317,
+    viralityScore: 93,
+    script: "Everyone thinks Cape Coral's flood insurance is a dealbreaker. I've closed 40 homes here and I want to show you something that completely changes that story. Most buyers look at the flood zone label and panic — but that's not the whole picture. There are streets in Cape Coral, right now, with X flood zone designations sitting under $380K, which means no mandatory flood insurance required by your lender. That's a savings of $2,000 to $4,800 every single year. I pulled the current FEMA map data this week and found 11 active listings that qualify — properties with gulf access, newer builds, move-in ready. Meanwhile, three of them already have showing requests scheduled for this weekend. The buyers who know this are moving. The ones who don't are still paying for flood insurance they never needed. What's your target budget for Cape Coral? Drop it in the comments and I'll show you exactly which zones to focus on.",
+  },
+  {
+    shortcode: "DU6eVDiisre",
+    url: "https://www.instagram.com/reel/DU6eVDiisre/",
+    title: "2026 Growth Ahead for Cape Coral Housing Market",
+    authorHandle: "cape_coral_market",
+    views: 41888,
+    likes: 2089,
+    comments: 309,
+    viralityScore: 89,
+    script: "Something big is happening in Cape Coral that most buyers are completely sleeping on. The city just approved over $2 billion in infrastructure projects — new roads, utilities, and commercial corridors — all scheduled to break ground before 2026. Here's what that means for you: every neighborhood within half a mile of those corridors historically sees 12 to 18 percent appreciation within 24 months of construction starting. I've already mapped the four ZIP codes that sit directly in that growth path, and right now you can still get a 3-bedroom there for under $380,000. Six months from now, that number is gone. I pulled the actual city permits this week — this is not speculation, this is scheduled. So tell me — are you planning to buy in Cape Coral in the next six to twelve months? Drop your timeline below and I'll send you exactly which neighborhoods to target before everyone else figures this out.",
+  },
+  {
+    shortcode: "DVJ4ANEk7ba",
+    url: "https://www.instagram.com/reel/DVJ4ANEk7ba/",
+    title: "2015 NW 21st Street, Cape Coral — what most buyers would miss",
+    authorHandle: "nw_cape_homes",
+    views: 43271,
+    likes: 2285,
+    comments: 250,
+    viralityScore: 87,
+    script: "Stop scrolling — I just walked through 2015 NW 21st Street in Cape Coral and there's something about this property most buyers would completely miss. Northwest Cape Coral is quietly becoming the smartest buy in Lee County right now — I'm talking 3-bed homes still under $380K, no HOA, no CDD fees, and some of these lots have Gulf access or canal frontage that buyers from out of state are snatching up before locals even know they're listed. I pulled the sales data for this corridor last month — 11 closings, average days on market was 9. Nine days. That's not a slow market, that's a feeding frenzy happening in slow motion. Three of those deals had seller concessions that covered most of closing costs — but only buyers who knew to ask got them. Are you looking in Northwest Cape Coral specifically, or are you open to other waterfront corridors under $400K? Drop your answer below and I'll send you exactly what's available this week.",
+  },
+  {
+    shortcode: "DTcEpXyD_wa",
+    url: "https://www.instagram.com/reel/DTcEpXyD_wa/",
+    title: "306 NW 3rd Pl, Cape Coral — 3 things buyers will miss",
+    authorHandle: "cape_coral_properties",
+    views: 47129,
+    likes: 1857,
+    comments: 256,
+    viralityScore: 85,
+    script: "Stop scrolling for one second — this house at 306 NW 3rd Place in Cape Coral just hit the market and there are three things about it that most buyers are going to completely miss. First, this is the northwest corridor — properties here have appreciated nearly 18% in the last 24 months and there are still homes under $400K that won't be there by summer. Second, the canal access on this street connects to open water faster than 90% of comparable listings in this price range — that alone adds $30K to $50K in real value. Third, I pulled the flood zone data on this address and it's not what you'd expect — which means insurance costs that could save you over $2,400 a year compared to similar homes two streets over. I've closed 11 transactions in this zip code this year alone. Are you looking in the 33993 zip code right now, or are you open to other northwest neighborhoods? Drop your answer below and I'll send you everything available this week before it hits Zillow.",
+  },
+];
+
+/**
+ * Convert live digest data to the format the app expects
+ */
+export function getLiveDigestContent(): DiscoveredContent[] {
+  return LIVE_DIGEST.map((item) => ({
+    url: item.url,
+    title: item.title,
+    caption: item.script.slice(0, 200) + "...",
+    platform: "instagram" as const,
+    creatorHandle: item.authorHandle,
+    creatorName: item.authorHandle,
+    thumbnail: "",
+    views: item.views,
+    likes: item.likes,
+    comments: item.comments,
+    engagementRate: item.viralityScore,
+    discoveredAt: new Date().toISOString(),
+  }));
+}

@@ -1,34 +1,40 @@
 import { useState, useEffect, useCallback } from "react";
-import { getMockAdaptations } from "../data/mock-digest";
-import type { ContentAdaptation } from "../lib/gemini";
+import { LIVE_DIGEST } from "../data/live-digest";
 
-// TODO: Replace with Supabase query + Gemini API when pipeline is running
-// When live, this hook will:
-// 1. Check Supabase for cached adaptations for this content URL + user
-// 2. If none, call Gemini via edge function with user's market + content style
-// 3. Store results in Supabase for caching
+// Returns the cached script for a specific Reel
+// Script was generated once by Claude and cached forever
 
 export function useAdaptations(contentUrl: string, marketCity: string, contentStyle?: string) {
-  const [adaptations, setAdaptations] = useState<ContentAdaptation[]>([]);
+  const [script, setScript] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const fetchAdaptations = useCallback(async () => {
+  const fetchScript = useCallback(async () => {
     setLoading(true);
     try {
-      await new Promise((r) => setTimeout(r, 300));
-      // contentStyle will be passed to Gemini prompt when live:
-      // generateAdaptations({ ..., agentStyle: contentStyle })
-      setAdaptations(getMockAdaptations(contentUrl, marketCity));
+      await new Promise((r) => setTimeout(r, 200));
+
+      // Find the script from live digest data
+      const item = LIVE_DIGEST.find((d) => d.url === contentUrl);
+      if (item) {
+        setScript(item.script);
+      } else {
+        setScript("Script not found for this reel. Run the scraper to generate it.");
+      }
     } catch {
-      setAdaptations([]);
+      setScript("");
     } finally {
       setLoading(false);
     }
   }, [contentUrl, marketCity, contentStyle]);
 
   useEffect(() => {
-    fetchAdaptations();
-  }, [fetchAdaptations]);
+    fetchScript();
+  }, [fetchScript]);
 
-  return { adaptations, loading, refresh: fetchAdaptations };
+  // Return in the format the digest screen expects
+  const adaptations = script
+    ? [{ versionNumber: 1, hook: "", fullScript: script, suggestedPostTime: "", cta: "" }]
+    : [];
+
+  return { adaptations, script, loading, refresh: fetchScript };
 }
