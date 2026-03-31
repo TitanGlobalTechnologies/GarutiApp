@@ -87,8 +87,8 @@ export default function DigestScreen() {
               <ItemRow
                 rightElement={
                   <View style={styles.engCol}>
-                    <Text style={styles.engRate}>{item.engagementRate}%</Text>
-                    <Text style={styles.platformBadge}>{platformIcon(item.platform)}</Text>
+                    <Text style={styles.viralIcon}>🦠</Text>
+                    <Text style={styles.viralScore}>{Math.round(item.engagementRate * 22)}</Text>
                   </View>
                 }
               >
@@ -170,9 +170,9 @@ const styles = StyleSheet.create({
   },
   reelTitle: { fontSize: 14, fontWeight: "600", color: "#fff" },
   reelMeta: { fontSize: 11, color: "#6B7280", marginTop: 3 },
-  engCol: { alignItems: "flex-end", gap: 2 },
-  engRate: { color: "#4ADE80", fontSize: 13, fontWeight: "600" },
-  platformBadge: { fontSize: 12 },
+  engCol: { alignItems: "center", gap: 2 },
+  viralIcon: { fontSize: 16 },
+  viralScore: { color: "#4ADE80", fontSize: 14, fontWeight: "700" },
   adaptationText: { fontSize: 13, color: "#E5E7EB", lineHeight: 20 },
   adaptationMeta: { fontSize: 11, color: "#6B7280", marginTop: 8 },
 });
