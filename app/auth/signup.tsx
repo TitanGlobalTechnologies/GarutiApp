@@ -6,13 +6,13 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuthContext } from "../../src/providers/AuthProvider";
+import { useUI } from "../../src/providers/UIProvider";
 import CTAButton from "../../components/CTAButton";
 
 const US_STATES = [
@@ -25,6 +25,7 @@ const US_STATES = [
 export default function SignUpScreen() {
   const router = useRouter();
   const { signUp } = useAuthContext();
+  const { showToast } = useUI();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,7 +35,7 @@ export default function SignUpScreen() {
 
   async function handleSignUp() {
     if (!fullName || !email || !password || !marketCity || !marketState) {
-      Alert.alert("Missing fields", "Please fill in all fields.");
+      showToast({ message: "Please fill in all fields.", type: "error" });
       return;
     }
     setLoading(true);
@@ -42,13 +43,10 @@ export default function SignUpScreen() {
     setLoading(false);
 
     if (error) {
-      Alert.alert("Sign up failed", error.message);
+      showToast({ message: error.message, type: "error" });
     } else {
-      Alert.alert(
-        "Check your email",
-        "We sent you a confirmation link. Please verify your email to continue.",
-        [{ text: "OK", onPress: () => router.replace("/auth/signin") }]
-      );
+      showToast({ message: "Check your email for a confirmation link!", type: "success" });
+      setTimeout(() => router.replace("/auth/signin"), 1500);
     }
   }
 

@@ -3,29 +3,36 @@ import { useRouter } from "expo-router";
 import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
 import { useAuthContext } from "../../src/providers/AuthProvider";
-import { showAlert, showConfirm } from "../../src/lib/alert";
+import { useUI } from "../../src/providers/UIProvider";
 
 export default function AccountSettingsScreen() {
   const router = useRouter();
   const { profile, signOut, isDemoMode } = useAuthContext();
+  const { showToast, showConfirm } = useUI();
 
-  function handleSignOut() {
-    showConfirm("Sign Out", "Are you sure you want to sign out?", async () => {
+  async function handleSignOut() {
+    const confirmed = await showConfirm({
+      title: "Sign Out",
+      message: "Are you sure you want to sign out?",
+      confirmLabel: "Sign Out",
+    });
+    if (confirmed) {
       await signOut();
       router.replace("/auth/welcome");
-    });
+    }
   }
 
-  function handleDeleteAccount() {
-    showConfirm(
-      "Delete Account",
-      "This will permanently delete your account, all conversation history, streak data, and adaptations. This cannot be undone.",
-      () => {
-        showAlert("Account Deleted", "Your account has been scheduled for deletion. You will receive a confirmation email.", () => {
-          router.replace("/auth/welcome");
-        });
-      }
-    );
+  async function handleDeleteAccount() {
+    const confirmed = await showConfirm({
+      title: "Delete Account",
+      message: "This will permanently delete your account, all conversation history, streak data, and adaptations. This cannot be undone.",
+      confirmLabel: "Delete Forever",
+      destructive: true,
+    });
+    if (confirmed) {
+      showToast({ message: "Account scheduled for deletion.", type: "info" });
+      setTimeout(() => router.replace("/auth/welcome"), 1500);
+    }
   }
 
   return (
@@ -68,14 +75,14 @@ export default function AccountSettingsScreen() {
           <Text style={styles.sectionTitle}>SECURITY</Text>
           <TouchableOpacity
             style={styles.actionRow}
-            onPress={() => showAlert("Coming Soon", "Password change will be available when Supabase is connected.")}
+            onPress={() => showToast({ message: "Coming soon — connect Supabase to enable.", type: "info" })}
           >
             <Text style={styles.actionText}>Change Password</Text>
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionRow}
-            onPress={() => showAlert("Coming Soon", "Two-factor authentication is planned for a future release.")}
+            onPress={() => showToast({ message: "2FA planned for a future release.", type: "info" })}
           >
             <Text style={styles.actionText}>Two-Factor Authentication</Text>
             <Text style={styles.chevron}>›</Text>
@@ -87,21 +94,21 @@ export default function AccountSettingsScreen() {
           <Text style={styles.sectionTitle}>YOUR DATA</Text>
           <TouchableOpacity
             style={styles.actionRow}
-            onPress={() => showAlert("Export Data", "Your data export will be emailed to you within 24 hours.")}
+            onPress={() => showToast({ message: "Data export requested — check your email.", type: "success" })}
           >
             <Text style={styles.actionText}>Export My Data</Text>
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionRow}
-            onPress={() => showAlert("Privacy Policy", "Opens privacy policy page (coming soon).")}
+            onPress={() => showToast({ message: "Privacy policy page coming soon.", type: "info" })}
           >
             <Text style={styles.actionText}>Privacy Policy</Text>
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionRow}
-            onPress={() => showAlert("Terms of Service", "Opens terms of service page (coming soon).")}
+            onPress={() => showToast({ message: "Terms of service page coming soon.", type: "info" })}
           >
             <Text style={styles.actionText}>Terms of Service</Text>
             <Text style={styles.chevron}>›</Text>

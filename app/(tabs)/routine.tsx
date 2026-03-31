@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
-import { showAlert } from "../../src/lib/alert";
+import { useUI } from "../../src/providers/UIProvider";
 import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
 import Badge from "../../components/Badge";
@@ -20,6 +20,7 @@ export default function RoutineScreen() {
     resetRoutine,
     isComplete,
   } = useRoutine();
+  const { showToast } = useUI();
 
   return (
     <SafeArea style={styles.container} edges={["top"]}>
@@ -90,7 +91,7 @@ export default function RoutineScreen() {
                   label="Mark as Posted ✓"
                   onPress={() => {
                     completeStep(4);
-                    showAlert("Posted!", "Great job! Moving to next step.");
+                    showToast({ message: "Posted! Moving to next step.", type: "success" });
                   }}
                 />
               </>
@@ -115,7 +116,7 @@ export default function RoutineScreen() {
                   label="Complete Routine ✓"
                   onPress={() => {
                     completeStep(6);
-                    showAlert("Routine Complete!", "Great work! See you tomorrow morning.");
+                    showToast({ message: "🎉 Routine Complete! See you tomorrow.", type: "success", duration: 3000 });
                   }}
                 />
               </>

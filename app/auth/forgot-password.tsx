@@ -5,11 +5,11 @@ import {
   TextInput,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuthContext } from "../../src/providers/AuthProvider";
+import { useUI } from "../../src/providers/UIProvider";
 import CTAButton from "../../components/CTAButton";
 
 export default function ForgotPasswordScreen() {
@@ -17,11 +17,12 @@ export default function ForgotPasswordScreen() {
   const { resetPassword } = useAuthContext();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const { showToast } = useUI();
   const [sent, setSent] = useState(false);
 
   async function handleReset() {
     if (!email) {
-      Alert.alert("Missing email", "Please enter your email address.");
+      showToast({ message: "Please enter your email address.", type: "error" });
       return;
     }
     setLoading(true);
@@ -29,7 +30,7 @@ export default function ForgotPasswordScreen() {
     setLoading(false);
 
     if (error) {
-      Alert.alert("Error", error.message);
+      showToast({ message: error.message, type: "error" });
     } else {
       setSent(true);
     }

@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
-import { showConfirm, showAlert } from "../../src/lib/alert";
+import { useUI } from "../../src/providers/UIProvider";
 import { useRouter } from "expo-router";
 import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
@@ -19,27 +19,31 @@ export default function ManageSubscriptionScreen() {
     cancelSubscription,
     pauseSubscription,
   } = useSubscription();
+  const { showToast, showConfirm } = useUI();
 
-  function handleCancel() {
-    showConfirm(
-      "Cancel Subscription",
-      "Are you sure? You'll lose access to your digest, adaptations, and conversation history.",
-      async () => {
-        await cancelSubscription();
-        showAlert("Cancelled", "Your subscription has been cancelled.");
-      }
-    );
+  async function handleCancel() {
+    const confirmed = await showConfirm({
+      title: "Cancel Subscription",
+      message: "Are you sure? You'll lose access to your digest, adaptations, and conversation history.",
+      confirmLabel: "Cancel Subscription",
+      destructive: true,
+    });
+    if (confirmed) {
+      await cancelSubscription();
+      showToast({ message: "Subscription cancelled.", type: "info" });
+    }
   }
 
-  function handlePause() {
-    showConfirm(
-      "Pause Subscription",
-      "Pause for 1 month at $0. Your data is saved and you can resume anytime.",
-      async () => {
-        await pauseSubscription();
-        showAlert("Paused", "Your subscription is paused for 1 month.");
-      }
-    );
+  async function handlePause() {
+    const confirmed = await showConfirm({
+      title: "Pause Subscription",
+      message: "Pause for 1 month at $0. Your data is saved and you can resume anytime.",
+      confirmLabel: "Pause 1 Month",
+    });
+    if (confirmed) {
+      await pauseSubscription();
+      showToast({ message: "Subscription paused for 1 month.", type: "success" });
+    }
   }
 
   const statusLabels: Record<string, { label: string; color: string }> = {

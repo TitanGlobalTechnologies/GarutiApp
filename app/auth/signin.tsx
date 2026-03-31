@@ -5,25 +5,26 @@ import {
   TextInput,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuthContext } from "../../src/providers/AuthProvider";
+import { useUI } from "../../src/providers/UIProvider";
 import CTAButton from "../../components/CTAButton";
 
 export default function SignInScreen() {
   const router = useRouter();
   const { signIn } = useAuthContext();
+  const { showToast } = useUI();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSignIn() {
     if (!email || !password) {
-      Alert.alert("Missing fields", "Please enter your email and password.");
+      showToast({ message: "Please enter your email and password.", type: "error" });
       return;
     }
     setLoading(true);
@@ -31,7 +32,7 @@ export default function SignInScreen() {
     setLoading(false);
 
     if (error) {
-      Alert.alert("Sign in failed", error.message);
+      showToast({ message: error.message, type: "error" });
     }
     // Auth state listener in useAuth will handle navigation
   }

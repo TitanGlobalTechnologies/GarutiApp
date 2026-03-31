@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { useUI } from "../../src/providers/UIProvider";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
@@ -23,6 +24,7 @@ export default function ConversationDetailScreen() {
   const router = useRouter();
   const { conversations, updateStatus, deleteConversation } = useConversationsContext();
 
+  const { showToast, showConfirm } = useUI();
   const convo = conversations.find((c) => c.id === id);
   const [statusUpdated, setStatusUpdated] = useState(false);
 
@@ -137,7 +139,13 @@ export default function ConversationDetailScreen() {
         <TouchableOpacity
           style={styles.deleteBtn}
           onPress={async () => {
-            if (typeof window !== "undefined" && !window.confirm(`Delete ${convo.contact_name} from tracker?`)) return;
+            const confirmed = await showConfirm({
+              title: "Delete Conversation",
+              message: `Remove ${convo.contact_name} from your tracker? This cannot be undone.`,
+              confirmLabel: "Delete",
+              destructive: true,
+            });
+            if (!confirmed) return;
             await deleteConversation(convo.id);
             router.back();
           }}

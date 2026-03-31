@@ -5,7 +5,7 @@ import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
 import CTAButton from "../../components/CTAButton";
 import { useAuthContext } from "../../src/providers/AuthProvider";
-import { showAlert } from "../../src/lib/alert";
+import { useUI } from "../../src/providers/UIProvider";
 
 const STYLE_OPTIONS = [
   { value: "professional", label: "Professional", desc: "Data-driven, authoritative, market expert tone" },
@@ -18,6 +18,7 @@ export default function ContentStyleScreen() {
   const router = useRouter();
   const { profile, updateProfile } = useAuthContext();
   const [style, setStyle] = useState(profile?.content_style || "friendly");
+  const { showToast } = useUI();
   const [customNotes, setCustomNotes] = useState("");
 
   async function handleSave() {
@@ -25,7 +26,8 @@ export default function ContentStyleScreen() {
       ? `${style} — ${customNotes.trim()}`
       : style;
     await updateProfile({ content_style: fullStyle });
-    showAlert("Saved!", "Your content style has been updated. Future AI adaptations will match this tone.", () => router.back());
+    showToast({ message: "Content style saved! AI will match this tone.", type: "success" });
+    setTimeout(() => router.back(), 1200);
   }
 
   return (

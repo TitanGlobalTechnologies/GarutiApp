@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
-import { showConfirm, showAlert } from "../../src/lib/alert";
+import { useUI } from "../../src/providers/UIProvider";
 import { useRouter } from "expo-router";
 import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
@@ -10,16 +10,19 @@ import type { SubscriptionTier } from "../../src/types/database";
 export default function PricingScreen() {
   const router = useRouter();
   const { trialDaysRemaining, isTrialActive, subscribe } = useSubscription();
+  const { showToast, showConfirm } = useUI();
 
   async function handleSubscribe(tier: SubscriptionTier) {
-    showConfirm(
-      "Simulate Subscribe",
-      `This will open Stripe Checkout for the ${tier} plan when API keys are configured. For now, the subscription is simulated.`,
-      async () => {
-        await subscribe(tier);
-        showAlert("Subscribed!", "You're now on the plan.", () => router.back());
-      }
-    );
+    const confirmed = await showConfirm({
+      title: "Start Subscription",
+      message: `This will open Stripe Checkout for the ${tier} plan when API keys are configured. For now, the subscription is simulated.`,
+      confirmLabel: "Subscribe",
+    });
+    if (confirmed) {
+      await subscribe(tier);
+      showToast({ message: "Subscribed! You're now on the plan.", type: "success" });
+      setTimeout(() => router.back(), 1200);
+    }
   }
 
   return (

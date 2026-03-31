@@ -5,7 +5,7 @@ import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
 import CTAButton from "../../components/CTAButton";
 import { useAuthContext } from "../../src/providers/AuthProvider";
-import { showAlert } from "../../src/lib/alert";
+import { useUI } from "../../src/providers/UIProvider";
 
 const EXPERIENCE_OPTIONS = [
   { value: 2, label: "1-3 years" },
@@ -19,11 +19,12 @@ export default function MarketSettingsScreen() {
   const { profile, updateProfile } = useAuthContext();
   const [city, setCity] = useState(profile?.market_city || "");
   const [state, setState] = useState(profile?.market_state || "");
+  const { showToast } = useUI();
   const [experience, setExperience] = useState(profile?.experience_years || 8);
 
   async function handleSave() {
     if (!city.trim() || !state.trim()) {
-      showAlert("Missing info", "Please enter your market city and state.");
+      showToast({ message: "Please enter your market city and state.", type: "error" });
       return;
     }
     await updateProfile({
@@ -31,7 +32,8 @@ export default function MarketSettingsScreen() {
       market_state: state.toUpperCase().trim(),
       experience_years: experience,
     });
-    showAlert("Saved!", "Your market area has been updated. Your daily digest will now show content from this market.", () => router.back());
+    showToast({ message: "Market area updated! Digest will refresh.", type: "success" });
+    setTimeout(() => router.back(), 1200);
   }
 
   return (

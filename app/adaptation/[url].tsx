@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Platform,
 } from "react-native";
-import { showAlert } from "../../src/lib/alert";
+import { useUI } from "../../src/providers/UIProvider";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
@@ -21,6 +21,7 @@ export default function AdaptationDetailScreen() {
   const decodedUrl = decodeURIComponent(url || "");
   const { adaptations, loading } = useAdaptations(decodedUrl, "Cape Coral");
   const [selectedVersion, setSelectedVersion] = useState<number>(1);
+  const { showToast } = useUI();
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   const selected = adaptations.find((a) => a.versionNumber === selectedVersion);
@@ -34,7 +35,7 @@ export default function AdaptationDetailScreen() {
       setCopiedIndex(index);
       setTimeout(() => setCopiedIndex(null), 2000);
     } catch {
-      showAlert("Copy failed", "Could not copy to clipboard.");
+      showToast({ message: "Could not copy to clipboard", type: "error" });
     }
   }
 
@@ -139,7 +140,8 @@ export default function AdaptationDetailScreen() {
             <CTAButton
               label="Mark as Posted ✓"
               onPress={() => {
-                showAlert("Posted!", "Great job! This has been logged to your tracker.", () => router.back());
+                showToast({ message: "Posted! Logged to your tracker.", type: "success" });
+                setTimeout(() => router.back(), 1200);
               }}
             />
 
