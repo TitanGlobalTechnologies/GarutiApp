@@ -256,6 +256,8 @@ The root layout (`app/_layout.tsx`) checks auth state on every navigation. Unaut
 |---|---|---|
 | Auth persistence | AsyncStorage via Supabase | Session survives app restart on all platforms |
 | Shared state via providers | ConversationsProvider wraps app | Log a conversation on one screen, see it instantly on tracker — single source of truth |
+| Market-driven content | Profile market_city/state flows into digest, adaptations, and pipeline queries | Change your market in Settings → all content updates to match |
+| Content style → AI prompt | Profile content_style passed to Gemini via useAdaptations hook | Change style in Settings → AI generates scripts matching your voice |
 | Demo mode | isDemoMode flag in supabase.ts | App runs fully without Supabase keys — mock user, mock data, all features work |
 | In-app UI feedback | UIProvider with Toast + ConfirmModal | All notifications and confirmations render inside the app frame — no browser prompts. Toast slides in from top, modals overlay with backdrop. Works identically on web and native. |
 | Auto-profile creation | Postgres trigger on `auth.users` INSERT | User always has a profile row — no race conditions |

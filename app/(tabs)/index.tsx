@@ -6,6 +6,7 @@ import Badge from "../../components/Badge";
 import ItemRow from "../../components/ItemRow";
 import CTAButton from "../../components/CTAButton";
 import HighlightGlow from "../../components/HighlightGlow";
+import { useAuthContext } from "../../src/providers/AuthProvider";
 import { useDigest } from "../../src/hooks/useDigest";
 
 function formatViews(n: number): string {
@@ -27,8 +28,10 @@ function platformIcon(p: string): string {
 
 export default function DigestScreen() {
   const router = useRouter();
-  // TODO: get market from user profile
-  const { content, loading, refresh } = useDigest("Cape Coral", "FL");
+  const { profile } = useAuthContext();
+  const marketCity = profile?.market_city || "Cape Coral";
+  const marketState = profile?.market_state || "FL";
+  const { content, loading, refresh } = useDigest(marketCity, marketState);
 
   if (loading && content.length === 0) {
     return (
@@ -56,7 +59,7 @@ export default function DigestScreen() {
 
         {/* Location + Streak */}
         <View style={styles.headerRow}>
-          <Text style={styles.location}>Cape Coral, FL</Text>
+          <Text style={styles.location}>{marketCity}, {marketState}</Text>
           <View style={styles.streakRow}>
             <Text style={styles.streakIcon}>🔥</Text>
             <Text style={styles.streakNum}>12</Text>
@@ -107,7 +110,7 @@ export default function DigestScreen() {
               <Badge label="Ready" variant="green" />
             </View>
             <Text style={styles.adaptationText}>
-              Hook: "Everyone's talking about Cape Coral flooding — here's what nobody tells you about the NEW construction zones..."
+              Hook: "Everyone's talking about {marketCity} flooding — here's what nobody tells you about the NEW construction zones..."
             </Text>
             <Text style={styles.adaptationMeta}>
               Based on: {topAdaptation.title} · Adapted for your audience

@@ -8,6 +8,7 @@ import {
   Platform,
 } from "react-native";
 import { useUI } from "../../src/providers/UIProvider";
+import { useAuthContext } from "../../src/providers/AuthProvider";
 import HighlightGlow from "../../components/HighlightGlow";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import SafeArea from "../../components/SafeArea";
@@ -19,8 +20,11 @@ import { useAdaptations } from "../../src/hooks/useAdaptations";
 export default function AdaptationDetailScreen() {
   const { url, title } = useLocalSearchParams<{ url: string; title: string }>();
   const router = useRouter();
+  const { profile } = useAuthContext();
   const decodedUrl = decodeURIComponent(url || "");
-  const { adaptations, loading } = useAdaptations(decodedUrl, "Cape Coral");
+  const marketCity = profile?.market_city || "Cape Coral";
+  const contentStyle = profile?.content_style || undefined;
+  const { adaptations, loading } = useAdaptations(decodedUrl, marketCity, contentStyle);
   const [selectedVersion, setSelectedVersion] = useState<number>(1);
   const { showToast } = useUI();
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);

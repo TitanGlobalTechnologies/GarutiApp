@@ -1,6 +1,6 @@
 # Local Authority Engine — Implementation Plan
 
-**Version:** 3.5 — Phases 1-7 Complete (Guided Routine + Highlight System)
+**Version:** 3.6 — Phases 1-7 Complete (Settings Wired to Pipeline)
 **Date:** March 30, 2026
 **Prepared for:** John Garuti / Titan Global Technologies
 **Product:** Local Authority Engine (LAE) Mobile App + Web

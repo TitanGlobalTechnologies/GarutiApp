@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import { useUI } from "../../src/providers/UIProvider";
+import { useAuthContext } from "../../src/providers/AuthProvider";
 import { useRouter } from "expo-router";
 import SafeArea from "../../components/SafeArea";
 import Card from "../../components/Card";
@@ -19,7 +20,9 @@ export default function ManageSubscriptionScreen() {
     cancelSubscription,
     pauseSubscription,
   } = useSubscription();
+  const { profile } = useAuthContext();
   const { showToast, showConfirm } = useUI();
+  const marketLabel = `${profile?.market_city || "Cape Coral"}, ${profile?.market_state || "FL"}`;
 
   async function handleCancel() {
     const confirmed = await showConfirm({
@@ -106,7 +109,7 @@ export default function ManageSubscriptionScreen() {
             <Text style={styles.cardTitle}>WHAT YOU'LL LOSE IF YOU DON'T SUBSCRIBE</Text>
             <View style={styles.loseList}>
               {[
-                "Your daily digest (personalized for Cape Coral, FL)",
+                `Your daily digest (personalized for ${marketLabel})`,
                 "47 tracked conversations and their history",
                 "Your 12-day posting streak",
                 "6 earned badges",
