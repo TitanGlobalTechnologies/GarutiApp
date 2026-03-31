@@ -1,6 +1,6 @@
 # Content Discovery Strategy — Zero-Cost Architecture
 
-**Version:** 1.1
+**Version:** 1.2
 **Date:** March 31, 2026
 **Status:** ✅ IMPLEMENTED — Code in `src/lib/discovery/` and `src/lib/gemini.ts`
 
@@ -447,6 +447,8 @@ Return as JSON array with keys: hook, script, postingTime, cta`
 | Data hooks (useDigest, useAdaptations) | ✅ Built | `src/hooks/useDigest.ts`, `src/hooks/useAdaptations.ts` |
 | Digest screen with live data | ✅ Built | `app/(tabs)/index.tsx` |
 | Adaptation detail screen | ✅ Built | `app/adaptation/[url].tsx` |
+| Morning Routine (V2) | ✅ Built | `app/(tabs)/routine.tsx` + `src/hooks/useRoutine.ts` |
+| Weekly Focus with AI (V2) | ✅ Built | `app/(tabs)/focus.tsx` + `src/hooks/useWeeklyFocus.ts` |
 | Daily cron pipeline (GitHub Actions) | ⏳ Pending | Needs Supabase + API keys configured |
 | Supabase Edge Function for pipeline | ⏳ Pending | Needs Supabase project set up |
 
