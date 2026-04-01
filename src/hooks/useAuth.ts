@@ -1,16 +1,31 @@
 import { useState, useEffect } from "react";
+import { Platform } from "react-native";
 import { supabase, isDemoMode } from "../lib/supabase";
 import type { Session, User } from "@supabase/supabase-js";
 import type { Profile } from "../types/database";
+import { matchZipToCity } from "../data/swfl-zipcodes";
+
+// Read zip from localStorage (set by onboarding screen)
+function getStoredZip(): string {
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    return window.localStorage?.getItem("lae_zipcode") || "33914";
+  }
+  return "33914";
+}
+
+function getStoredCity(): string {
+  const zip = getStoredZip();
+  return matchZipToCity(zip) || "Cape Coral";
+}
 
 const DEMO_PROFILE: Profile = {
   id: "demo-user",
   full_name: "Demo Agent",
   email: "demo@localauthorityengine.com",
   avatar_url: null,
-  market_city: "Cape Coral",
+  market_city: getStoredCity(),
   market_state: "FL",
-  market_zip: "33914",
+  market_zip: getStoredZip(),
   experience_years: 8,
   content_style: "Professional but approachable",
   stripe_customer_id: null,

@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from "react";
+import React, { useRef, useState, useCallback, useEffect } from "react";
 import { View, Text, StyleSheet, Platform } from "react-native";
 
 interface PhoneFrameProps {
@@ -11,13 +11,19 @@ const DEFAULT_WIDTH = 390;
 const DEFAULT_HEIGHT = 844;
 
 export default function PhoneFrame({ children }: PhoneFrameProps) {
-  if (Platform.OS !== "web") {
-    return <>{children}</>;
-  }
-
+  // All hooks must be called before any conditional return
+  const [isMobile, setIsMobile] = useState(false);
   const [size, setSize] = useState({ width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT });
   const dragging = useRef(false);
   const startPos = useRef({ x: 0, y: 0, w: 0, h: 0 });
+
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   const onMouseDown = useCallback(
     (e: any) => {
@@ -44,43 +50,45 @@ export default function PhoneFrame({ children }: PhoneFrameProps) {
     [size]
   );
 
+  // Not web — no frame
+  if (Platform.OS !== "web") {
+    return <>{children}</>;
+  }
+
+  // Mobile browser — full screen, no frame
+  if (isMobile) {
+    return <View style={styles.mobileContainer}>{children}</View>;
+  }
+
+  // Desktop — phone mockup with resize
   return (
     <View style={styles.backdrop}>
-      {/* Header */}
       <Text style={styles.heading}>Local Authority Engine</Text>
       <Text style={styles.subheading}>Interactive Mobile Preview</Text>
 
-      {/* Phone shell */}
       <View
         style={[
           styles.phone,
           { width: size.width, height: size.height } as any,
         ]}
       >
-        {/* Notch */}
         <View style={styles.notch} />
-
-        {/* Status bar */}
         <View style={styles.statusBar}>
           <Text style={styles.statusText}>9:41</Text>
           <Text style={styles.statusText}>5G   87%</Text>
         </View>
-
-        {/* App content */}
         <View style={styles.screen}>{children}</View>
       </View>
 
-      {/* Resize handle */}
       <View
         style={styles.resizeHandle}
-        // @ts-ignore - web-only event
+        // @ts-ignore
         onMouseDown={onMouseDown}
       >
         <Text style={styles.resizeIcon}>⤡</Text>
         <Text style={styles.resizeLabel}>Drag to resize</Text>
       </View>
 
-      {/* Dimensions indicator */}
       <Text style={styles.dimensions}>
         {Math.round(size.width)} × {Math.round(size.height)}
       </Text>
@@ -89,6 +97,14 @@ export default function PhoneFrame({ children }: PhoneFrameProps) {
 }
 
 const styles = StyleSheet.create({
+  mobileContainer: {
+    flex: 1,
+    backgroundColor: "#0F1923",
+    // @ts-ignore web
+    height: "100vh",
+    // @ts-ignore web
+    overflow: "auto",
+  },
   backdrop: {
     flex: 1,
     backgroundColor: "#111827",

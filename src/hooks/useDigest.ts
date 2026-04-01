@@ -1,9 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { getLiveDigestContent } from "../data/live-digest";
+import { getLiveDigestContent, SupportedCity } from "../data/live-digest";
 import type { DiscoveredContent } from "../lib/content-pipeline";
-
-// Uses real scraped data from the daily pipeline run
-// When Supabase is connected, this will query the database instead
 
 export function useDigest(marketCity: string, marketState: string) {
   const [content, setContent] = useState<DiscoveredContent[]>([]);
@@ -15,7 +12,7 @@ export function useDigest(marketCity: string, marketState: string) {
     setError(null);
     try {
       await new Promise((r) => setTimeout(r, 300));
-      setContent(getLiveDigestContent());
+      setContent(getLiveDigestContent(marketCity as SupportedCity));
     } catch (err: any) {
       setError(err.message || "Failed to load digest");
     } finally {
