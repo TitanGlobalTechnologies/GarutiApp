@@ -116,13 +116,16 @@ export function buildScriptPrompt(params: {
   return `Here is a viral Instagram Reel about real estate in ${params.city}, ${params.state}:
 
 Title: "${params.originalTitle}"
-Caption/Content: "${params.originalCaption}"
+Caption/Transcript: "${params.originalCaption}"
 Performance: ${params.views.toLocaleString()} views, ${params.likes.toLocaleString()} likes, ${params.comments.toLocaleString()} comments
+
+The "Caption/Transcript" above may be a REAL TRANSCRIPT of what the person actually said in the video. If it sounds like spoken words (not hashtags or emojis), treat it as the actual script they used and base your rewrite on their specific talking points, data, and arguments.
 
 Rewrite this as a conversion-optimized script for a real estate agent in ${params.city}, ${params.state}.
 
 The script must:
-- Keep what made the original go viral (the core topic/angle)
+- Keep what made the original go viral (the core topic, angle, and key talking points)
+- If a transcript is provided, capture the same energy and arguments but rewrite for the agent's voice
 - Add psychological triggers to drive viewers to DM or comment
 - Include specific ${params.city} details and data points
 - End with a conversation-starting CTA (a specific question, not "DM me")

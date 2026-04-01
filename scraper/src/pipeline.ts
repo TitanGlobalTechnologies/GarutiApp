@@ -15,6 +15,7 @@ import { discoverReels } from "./serpapi";
 import { getRealEngagement, RealEngagement } from "./instagram-engagement";
 import { scoreAndRank, pickTop, ScoredContent } from "./virality";
 import { generateScript, getCachedScript } from "./script-generator";
+import { transcribeReel } from "./transcribe";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -134,15 +135,26 @@ async function scrapeMarket(market: Market): Promise<DigestItem[]> {
     console.log(`  👾 ${item.viralityScore} — ${item.title.slice(0, 55)}... (${item.views.toLocaleString()} views)`);
   }
 
-  // Step 5: Generate scripts with Claude (cached)
-  console.log(`\n[5/5] Generating scripts with Claude...`);
+  // Step 5: Transcribe videos + Generate scripts with Claude (cached)
+  console.log(`\n[5/6] Transcribing videos with Whisper...`);
+
+  const transcripts: Record<string, string> = {};
+  for (const item of top) {
+    const transcript = await transcribeReel(item.shortcode);
+    transcripts[item.shortcode] = transcript;
+  }
+
+  console.log(`\n[6/6] Generating scripts with Claude (using real transcripts)...`);
   const digestItems: DigestItem[] = [];
 
   for (const item of top) {
+    const transcript = transcripts[item.shortcode] || "";
+    const captionOrTranscript = transcript || (item as any).caption || item.title;
+
     const script = await generateScript({
       shortcode: item.shortcode,
       title: item.title,
-      caption: (item as any).caption || item.title,
+      caption: captionOrTranscript,
       city: market.city,
       state: market.state,
       views: item.views,
