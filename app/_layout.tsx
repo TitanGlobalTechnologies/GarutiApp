@@ -62,6 +62,7 @@ function getStoredZip(): string | null {
 
 export default function RootLayout() {
   const [hasZip, setHasZip] = useState<boolean | null>(null);
+  const [zipKey, setZipKey] = useState(0); // Forces remount when zip changes
 
   useEffect(() => {
     setHasZip(!!getStoredZip());
@@ -83,8 +84,9 @@ export default function RootLayout() {
         <PhoneFrame>
           <ZipOnboarding
             onComplete={() => {
+              setZipKey((k) => k + 1); // Force remount of providers
               setHasZip(true);
-            }}
+            }
           />
         </PhoneFrame>
       </SafeAreaProvider>
@@ -94,7 +96,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
-      <AuthProvider>
+      <AuthProvider key={`auth-${zipKey}`}>
         <ConversationsProvider>
           <UIProvider>
             <RoutineProvider>
