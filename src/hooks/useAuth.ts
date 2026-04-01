@@ -18,7 +18,8 @@ function getStoredCity(): string {
   return matchZipToCity(zip) || "Cape Coral";
 }
 
-const DEMO_PROFILE: Profile = {
+function buildDemoProfile(): Profile {
+  return {
   id: "demo-user",
   full_name: "Demo Agent",
   email: "demo@localauthorityengine.com",
@@ -36,7 +37,8 @@ const DEMO_PROFILE: Profile = {
   notification_preferences: { digest: true, streak: true, coaching: true },
   created_at: new Date(Date.now() - 42 * 24 * 60 * 60 * 1000).toISOString(),
   updated_at: new Date().toISOString(),
-};
+  };
+}
 
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
@@ -46,10 +48,11 @@ export function useAuth() {
 
   useEffect(() => {
     // Demo mode: skip Supabase, use mock user
+    // buildDemoProfile() reads from localStorage at call time, not module load
     if (isDemoMode) {
       setSession({ user: { id: "demo-user" } } as Session);
       setUser({ id: "demo-user" } as User);
-      setProfile(DEMO_PROFILE);
+      setProfile(buildDemoProfile());
       setLoading(false);
       return;
     }
