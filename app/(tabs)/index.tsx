@@ -57,13 +57,19 @@ export default function DigestScreen() {
   }
 
   async function handleSaveScript() {
+    let copied = false;
     if (Platform.OS === "web") {
       try {
         await navigator.clipboard.writeText(editableScript);
+        copied = true;
       } catch {}
     }
     setIsEditing(false);
-    showToast({ message: "Script saved and copied to clipboard!", type: "success", duration: 3000 });
+    showToast({
+      message: copied ? "Script saved and copied to clipboard!" : "Script saved!",
+      type: "success",
+      duration: 3000,
+    });
   }
 
   if (loading && content.length === 0) {

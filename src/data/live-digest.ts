@@ -5,6 +5,8 @@
  */
 
 import type { DiscoveredContent } from "../lib/content-pipeline";
+import type { SupportedCity } from "./swfl-zipcodes";
+export type { SupportedCity } from "./swfl-zipcodes";
 
 export interface LiveDigestItem {
   shortcode: string;
@@ -18,8 +20,6 @@ export interface LiveDigestItem {
   script: string;
   caption: string;
 }
-
-export type SupportedCity = "Cape Coral" | "Fort Myers" | "Naples" | "Bonita Springs" | "Lehigh Acres" | "Punta Gorda";
 
 export const CITY_DIGESTS: Record<SupportedCity, LiveDigestItem[]> = {
   "Cape Coral": [

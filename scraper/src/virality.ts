@@ -88,15 +88,20 @@ export function pickTop(
   previousShortcodes: Set<string> = new Set()
 ): ScoredContent[] {
   const results: ScoredContent[] = [];
+  const seenInBatch = new Set<string>();
 
   for (const item of scored) {
     if (results.length >= topN) break;
 
-    // Skip if we've shown this post before (unless super viral — score > 90)
+    // Skip duplicates within this batch (same shortcode, different URL forms)
+    if (seenInBatch.has(item.shortcode)) continue;
+
+    // Skip if we've shown this post before (unless super viral)
     if (previousShortcodes.has(item.shortcode) && item.viralityScore <= 90) {
       continue;
     }
 
+    seenInBatch.add(item.shortcode);
     results.push(item);
   }
 

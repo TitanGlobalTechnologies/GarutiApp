@@ -224,15 +224,17 @@ export async function discoverReels(
     }
   }
 
-  // Deduplicate by URL
+  // Deduplicate by shortcode (not URL — same post can have different URL forms
+  // e.g. instagram.com vs secure.instagram.com, or ?hl= params)
   const seen = new Set<string>();
   const unique = allResults.filter((r) => {
-    // Only keep actual Instagram Reel URLs
     if (!r.url.includes("instagram.com/reel/") && !r.url.includes("instagram.com/p/")) {
       return false;
     }
-    if (seen.has(r.url)) return false;
-    seen.add(r.url);
+    const match = r.url.match(/(?:reel|p)\/([A-Za-z0-9_-]+)/);
+    const shortcode = match ? match[1] : r.url;
+    if (seen.has(shortcode)) return false;
+    seen.add(shortcode);
     return true;
   });
 

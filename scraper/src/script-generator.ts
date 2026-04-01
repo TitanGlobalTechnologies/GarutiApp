@@ -131,6 +131,28 @@ export async function generateScript(params: {
     }
   }
 
+  // Validate — Claude sometimes returns error messages instead of scripts
+  const errorPhrases = ["The transcript", "I need", "To write you a script", "I can't", "I don't have enough"];
+  const isErrorScript = errorPhrases.some((p) => script.startsWith(p));
+
+  if (isErrorScript) {
+    console.log(`  [script] Claude returned an error response, retrying with title only...`);
+    const fallbackPrompt = buildScriptPrompt({
+      originalTitle: params.title,
+      originalCaption: params.title,
+      city: params.city,
+      state: params.state,
+      views: params.views,
+      likes: params.likes,
+      comments: params.comments,
+    });
+    try {
+      script = await callClaude(CONVERSION_SYSTEM_PROMPT, fallbackPrompt);
+    } catch {
+      script = `[Script generation failed — will retry next run. Topic: ${params.title}]`;
+    }
+  }
+
   // Cache it forever (unless it's a failure placeholder)
   if (!script.startsWith("[Script generation failed")) {
     cacheScript(params.shortcode, script);
