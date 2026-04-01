@@ -1,0 +1,5 @@
+The transcript here isn't real estate content. It looks like song lyrics got picked up by the auto-caption tool instead of what the agent actually said. There's nothing in there about the property, the price, the neighborhood, or any talking point I can build from.
+
+To write you a script that actually converts, I need a little something to work with. Can you tell me a few details about this listing? Even just the price, the style of the home, and one or two things that make it stand out, like a pool, a canal, new construction, or a good flood zone rating, would be enough. If you know what the agent was actually talking about in the video, even a rough summary helps.
+
+Once I have that, I can write you a script built around real data and a hook that stops the scroll. What do you know about this property?
