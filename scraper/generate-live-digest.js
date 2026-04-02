@@ -64,6 +64,21 @@ for (const [key, items] of Object.entries(data)) {
     out += `      viralityScore: ${item.viralityScore},\n`;
     out += `      script: "${esc(item.script)}",\n`;
     out += `      caption: "${esc(item.caption || item.title)}",\n`;
+
+    // For Florida/USA entries, embed localized scripts per city
+    if (city === "Florida" || city === "USA") {
+      const cities = ["Cape Coral", "Fort Myers", "Naples", "Bonita Springs", "Lehigh Acres", "Punta Gorda"];
+      out += `      localizedScripts: {\n`;
+      for (const c of cities) {
+        const cacheKey = `${item.shortcode}_${c.replace(/\\s/g, "_")}`;
+        const cachePath = path.join(__dirname, "output/script_cache", `${cacheKey}.txt`);
+        let locScript = "";
+        try { locScript = fs.readFileSync(cachePath, "utf-8"); } catch {}
+        out += `        "${c}": "${esc(locScript || item.script)}",\n`;
+      }
+      out += `      },\n`;
+    }
+
     out += `    },\n`;
   }
   out += `  ],\n`;

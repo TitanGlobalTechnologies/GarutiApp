@@ -174,15 +174,13 @@ export default function DigestScreen() {
         discoveredAt: new Date().toISOString(),
       }));
 
-  // For script lookup, use the right scope
-  const scriptCity = activeTab === "city" ? marketCity
-    : activeTab === "state" ? "Florida"
-    : "USA";
-
+  // Always pass user's city for script lookup — state/nation scripts
+  // are localized to the user's city (e.g., Texas post → Cape Coral script)
   const { adaptations, loading: adaptLoading } = useAdaptations(
     selectedUrl || "",
-    scriptCity,
-    contentStyle
+    marketCity,
+    contentStyle,
+    activeTab !== "city" ? activeTab : undefined, // scope hint for state/nation
   );
 
   function handleSelectReel(url: string) {
