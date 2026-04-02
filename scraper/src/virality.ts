@@ -1,13 +1,16 @@
 /**
  * Virality Score Calculator
  *
- * Normalizes views, likes, and comments within a batch to 0-100,
- * then applies weighted formula:
+ * Formula (absolute, not normalized):
+ *   score = (views / 20) + (likes / 10) + comments
  *
- *   score = (views_norm * 0.4) + (likes_norm * 0.3) + (comments_norm * 0.3)
+ * Rationale:
+ *   - 20 views = 1 point (views are passive, low value)
+ *   - 10 likes = 1 point (active engagement, medium value)
+ *   - 1 comment = 1 point (highest value, real conversation)
  *
- * Top post gets ~95, lowest gets ~40.
- * Never returns below 10 (everything that made it here has some traction).
+ * No cap on maximum. Displayed as up to 3 digits in the UI.
+ * A post with 100K views, 5K likes, 200 comments = 5000 + 500 + 200 = 5700
  */
 
 export interface ScoredContent {
@@ -20,12 +23,14 @@ export interface ScoredContent {
   views: number;
   likes: number;
   comments: number;
-  viralityScore: number; // 0-100
+  viralityScore: number;
 }
 
-function normalize(value: number, min: number, max: number): number {
-  if (max === min) return 50; // all same value
-  return ((value - min) / (max - min)) * 100;
+/**
+ * Calculate virality score for a single post
+ */
+export function calculateVirality(views: number, likes: number, comments: number): number {
+  return Math.round((views / 20) + (likes / 10) + comments);
 }
 
 /**
@@ -46,34 +51,11 @@ export function scoreAndRank(
 ): ScoredContent[] {
   if (items.length === 0) return [];
 
-  // Find min/max for normalization
-  const views = items.map((i) => i.views);
-  const likes = items.map((i) => i.likes);
-  const comments = items.map((i) => i.comments);
+  const scored: ScoredContent[] = items.map((item) => ({
+    ...item,
+    viralityScore: calculateVirality(item.views, item.likes, item.comments),
+  }));
 
-  const minViews = Math.min(...views);
-  const maxViews = Math.max(...views);
-  const minLikes = Math.min(...likes);
-  const maxLikes = Math.max(...likes);
-  const minComments = Math.min(...comments);
-  const maxComments = Math.max(...comments);
-
-  // Score each item
-  const scored: ScoredContent[] = items.map((item) => {
-    const viewsNorm = normalize(item.views, minViews, maxViews);
-    const likesNorm = normalize(item.likes, minLikes, maxLikes);
-    const commentsNorm = normalize(item.comments, minComments, maxComments);
-
-    // Weighted formula
-    const rawScore = viewsNorm * 0.4 + likesNorm * 0.3 + commentsNorm * 0.3;
-
-    // Floor at 10, cap at 99
-    const viralityScore = Math.round(Math.max(10, Math.min(99, rawScore)));
-
-    return { ...item, viralityScore };
-  });
-
-  // Sort by score descending
   scored.sort((a, b) => b.viralityScore - a.viralityScore);
 
   return scored;
@@ -93,10 +75,8 @@ export function pickTop(
   for (const item of scored) {
     if (results.length >= topN) break;
 
-    // Skip duplicates within this batch (same shortcode, different URL forms)
     if (seenInBatch.has(item.shortcode)) continue;
 
-    // Skip if we've shown this post before (unless super viral)
     if (previousShortcodes.has(item.shortcode) && item.viralityScore <= 90) {
       continue;
     }

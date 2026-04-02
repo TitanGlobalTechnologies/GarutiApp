@@ -29,6 +29,13 @@ function formatViews(n: number): string {
   return String(n);
 }
 
+function formatScore(n: number): string {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
+  if (n >= 10000) return (n / 1000).toFixed(0) + "K";
+  if (n >= 1000) return (n / 1000).toFixed(1) + "K";
+  return String(Math.round(n));
+}
+
 /** Maps a ContentPlatform to its Ionicons logo glyph name */
 const PLATFORM_ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   instagram: "logo-instagram",
@@ -273,7 +280,7 @@ export default function DigestScreen() {
                     <View style={[styles.viralBadge, isSelected && styles.viralBadgeSelected]}>
                       <Text style={styles.viralIcon}>👾</Text>
                       <Text style={[styles.viralScore, isSelected && styles.viralScoreSelected]}>
-                        {Math.round(item.engagementRate)}
+                        {formatScore(item.engagementRate)}
                       </Text>
                     </View>
                   </View>
