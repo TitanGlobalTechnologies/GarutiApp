@@ -45,7 +45,7 @@ export interface LiveDigestItem {
   caption: string;
 }
 
-export type SupportedCity = "Cape Coral" | "Fort Myers" | "Naples" | "Bonita Springs" | "Lehigh Acres" | "Punta Gorda";
+export type SupportedCity = "Cape Coral" | "Fort Myers" | "Naples" | "Bonita Springs" | "Lehigh Acres" | "Punta Gorda" | "Florida" | "USA";
 
 export const CITY_DIGESTS: Record<SupportedCity, LiveDigestItem[]> = {\n`;
 

@@ -19,7 +19,7 @@ export interface LiveDigestItem {
   caption: string;
 }
 
-export type SupportedCity = "Cape Coral" | "Fort Myers" | "Naples" | "Bonita Springs" | "Lehigh Acres" | "Punta Gorda";
+export type SupportedCity = "Cape Coral" | "Fort Myers" | "Naples" | "Bonita Springs" | "Lehigh Acres" | "Punta Gorda" | "Florida" | "USA";
 
 export const CITY_DIGESTS: Record<SupportedCity, LiveDigestItem[]> = {
   "Cape Coral": [
@@ -415,7 +415,7 @@ export const CITY_DIGESTS: Record<SupportedCity, LiveDigestItem[]> = {
       views: 139412,
       likes: 2978,
       comments: 0,
-      viralityScore: 49,
+      viralityScore: 88,
       script: "Cape Coral sellers are bleeding right now and most buyers have no idea this is happening.  I just pulled the data and homes that sold in 2022 are now listing BELOW what they paid. One seller bought at 390k and just listed at 357k. That's a 33 thousand dollar loss before closing costs even touch it.  And rentals? Even worse. Landlords are cutting prices and still sitting empty because inventory is through the roof in certain zip codes.  Here's the thing though. This is actually incredible news if you know where to look. Some Cape Coral neighborhoods are holding strong. Some are actually undervalued right now. The people winning in this market are the ones who know the difference before they sign anything.  I work these zip codes every single day and I know exactly which streets are worth your money right now.  So tell me, are you trying to buy or sell in Cape Coral in the next 6 months?",
       caption: "Florida's housing market is crashing in 2026. Sellers are losing money. Prices are down as much as \$30,000, \$40,000 and even \$100,000 in certain neighborhoods. This house is down almost 10% from its 2022 price, and one has to wonder how much more the values could decline. Florida is a boom-or-bust housing market, and there's big long-term growth. But right not there's a bust occurring. Anyone buying in Florida in 2026 needs to understand the 12-month price forecast and overvaluation rate for their area. Access by downloading the Reventure Mobile App or head to www.reventure.app.",
     },
@@ -427,7 +427,7 @@ export const CITY_DIGESTS: Record<SupportedCity, LiveDigestItem[]> = {
       views: 11711,
       likes: 883,
       comments: 0,
-      viralityScore: 11,
+      viralityScore: 57,
       script: "It's hard to believe but this home officially hits the market TODAY in Florida and I am not ready for this one to go 😭  Listen. This house has ENERGY. The kind you feel the second you walk through the front door. Sunlight hitting every corner. Spaces that actually make you feel something. That whole \"I could see my life here\" moment? Yeah. This is THAT house.  We staged it. We priced it sharp. We know exactly what buyers in this market want right now.  And homes like this? They do not sit. They get multiple offers within days and then they're just... gone.  If you've been waiting for the right one to pop up in Florida, this might literally be it.  So tell me honestly: what's actually been stopping you from making your move this year?",
       caption: "It’s hard to believe, but our home officially hits the market today! 🏡 We’ve loved our time in this home but we’re ready for the next owners to find and love it, as we prepare to wrap up our new build! Serious inquiries can be sent to @stayon30a or you can comment TOUR on this post and I’ll send you the full photo tour along with all sources (I’ll also include their contact info there). Thanks for following along on this journey with us! 🩵 https://lifeonvirginiastreet.com/life-on-virginia-street-florida-home-tour/  30A Homes Coastal Home Tour",
     },
@@ -439,7 +439,7 @@ export const CITY_DIGESTS: Record<SupportedCity, LiveDigestItem[]> = {
       views: 7151,
       likes: 301,
       comments: 0,
-      viralityScore: 10,
+      viralityScore: 44,
       script: "Florida home prices are dropping in 27 out of 28 markets and everyone's freaking out calling it a crash 👀  But here's what the fear mongers aren't telling you...  Orlando is still up 45% since 2020. That's not a crash. That's a correction after years of insane growth.  Meanwhile yeah Cape Coral is down 17%. Punta Gorda down 22%. Those markets ran WAY too hot too fast.  Not all Florida real estate is the same and that's literally the whole point people are missing right now.  The same people screaming crash in 2020 are still screaming it today. And guess what they got rich selling that fear while smart buyers built serious wealth.  Inflation isn't dropping 30% overnight. Prices have a floor.  So the real question for you is this... are you waiting for a crash that may never come while other buyers are locking in deals RIGHT now in your market?",
       caption: "Are falling home prices a sign of a crash? 🧐 ㅤ Single family home prices are falling on a year-on-year basis in 27 of the 28 Florida micro areas and some are saying it's early signs of a crash; we’re not so sure it’s that simple. ㅤ What do you think? Let us know below 👇",
     },
@@ -470,18 +470,6 @@ export const CITY_DIGESTS: Record<SupportedCity, LiveDigestItem[]> = {
       caption: "A man in Texas struggled for months to sell his house through traditional listings, and nothing worked. Instead of lowering the price again, he launched a creative idea by advertising the home for ten dollars, capturing massive public attention and sparking widespread curiosity.  The strategy was actually a contest. Participants paid ten dollars to enter, and the concept spread quickly across social media. Nearly two hundred thousand people joined, turning a difficult sale into a viral moment that completely transformed the outcome and interest surrounding the property.  By the end, he earned roughly two million dollars from the combined entries. Afterward, he legally transferred the house to the winner, giving someone a life changing prize while securing a far better financial result than he ever expected from a standard real estate listing.  His experience proved that attention can be more powerful than pricing. Creative marketing helped him exceed his original asking price by a huge margin. This unique strategy showed how thinking differently can unlock opportunities even when the market seems unresponsive.  Follow @the_globalfeed for the mindset, strategies, and tools to go from struggling to thriving. Let’s get it together. 🚀 . . @the_globalfeed @the_globalfeed @the_globalfeed",
     },
     {
-      shortcode: "DVgz0QQEWWB",
-      url: "https://www.instagram.com/reel/DVgz0QQEWWB/",
-      title: "2026 is shaping up to be a pivotal year in real estate ...",
-      authorHandle: "kellerwilliamsrealty",
-      views: 3480,
-      likes: 412,
-      comments: 0,
-      viralityScore: 10,
-      script: "2026 is about to shake up real estate in a BIG way and here are the 3 things you need to know right now.  Rates. They hit almost 8% back in 2023 and have been slowly dropping. More cuts could be coming this year. That matters for your wallet.  First time buyers. The average age just hit 40. FORTY. As the market softens that number should start dropping again. Meaning more competition for starter homes.  And the big one. Mortgage lock-in. Millions of homeowners are sitting on 3% rates feeling completely stuck. But life happens. New jobs. Babies. Divorces. And when rates drop enough those homes flood the market.  Here is what that means for YOU. More inventory. More opportunity. Possibly your best window in years to buy or sell.  So tell me honestly, are you waiting for rates to drop before you make your move?",
-      caption: "2026 is shaping up to be a pivotal year in real estate. 🏡  @therealjasonabrams is watching three pressure points:  1️⃣ Interest rates: They jumped from 3% to nearly 8%. If they keep trending down, demand shifts.  2️⃣ First-time buyers: The average age is 40. If affordability improves, does the next wave step in?  3️⃣ Mortgage lock-ins: Millions sit on 3% rates. If rates ease, does inventory unlock?  What are you watching in 2026? Comment below.",
-    },
-    {
       shortcode: "DTNku-ygKi1",
       url: "https://www.instagram.com/reel/DTNku-ygKi1/",
       title: "Five reasons 2026 will be a defining year for real estate. Our ...",
@@ -489,9 +477,21 @@ export const CITY_DIGESTS: Record<SupportedCity, LiveDigestItem[]> = {
       views: 65109,
       likes: 21397,
       comments: 0,
-      viralityScore: 10,
+      viralityScore: 53,
       script: "Here's the truth nobody's talking about... 2026 might be the best buying opportunity for luxury real estate we've seen in years.  Inventory is at its highest since 2020. That means MORE options for buyers right now. The Winter Games are putting host cities on the global map. Wealthy families are going ALL IN on multi-generational properties to build serious long-term wealth.  And places like New York and Aspen? Still appreciating. Still scarce. Still winning.  This market isn't slowing down. It's shifting. And the people who understand that shift are going to make moves that their future selves will thank them for.  I've been deep in the 2026 Sotheby's Luxury Outlook data and honestly... it changed how I'm advising every single client this year.  So tell me... are you looking to buy, sell, or invest in luxury real estate before the market gets even more competitive?",
       caption: "Five reasons 2026 will be a defining year for real estate. Our 2026 Luxury Outlook dives into the trends shaping the high-end market – higher inventory, evolving buyer profiles, global demand drivers, and more.  Comment REPORT for exclusive access straight to your inbox.   #SothebysRealty #LuxuryOutlook",
+    },
+    {
+      shortcode: "DVgz0QQEWWB",
+      url: "https://www.instagram.com/reel/DVgz0QQEWWB/",
+      title: "2026 is shaping up to be a pivotal year in real estate ...",
+      authorHandle: "kellerwilliamsrealty",
+      views: 3480,
+      likes: 412,
+      comments: 0,
+      viralityScore: 23,
+      script: "2026 is about to shake up real estate in a BIG way and here are the 3 things you need to know right now.  Rates. They hit almost 8% back in 2023 and have been slowly dropping. More cuts could be coming this year. That matters for your wallet.  First time buyers. The average age just hit 40. FORTY. As the market softens that number should start dropping again. Meaning more competition for starter homes.  And the big one. Mortgage lock-in. Millions of homeowners are sitting on 3% rates feeling completely stuck. But life happens. New jobs. Babies. Divorces. And when rates drop enough those homes flood the market.  Here is what that means for YOU. More inventory. More opportunity. Possibly your best window in years to buy or sell.  So tell me honestly, are you waiting for rates to drop before you make your move?",
+      caption: "2026 is shaping up to be a pivotal year in real estate. 🏡  @therealjasonabrams is watching three pressure points:  1️⃣ Interest rates: They jumped from 3% to nearly 8%. If they keep trending down, demand shifts.  2️⃣ First-time buyers: The average age is 40. If affordability improves, does the next wave step in?  3️⃣ Mortgage lock-ins: Millions sit on 3% rates. If rates ease, does inventory unlock?  What are you watching in 2026? Comment below.",
     },
     {
       shortcode: "DTIlyLVgZk_",
@@ -501,7 +501,7 @@ export const CITY_DIGESTS: Record<SupportedCity, LiveDigestItem[]> = {
       views: 4296,
       likes: 113,
       comments: 0,
-      viralityScore: 10,
+      viralityScore: 18,
       script: "Here's the truth nobody's talking about right now.  Everyone's obsessed with interest rates but that's actually NOT the biggest story heading into 2026.  What I'm seeing on the ground in Long Beach and Orange County is way more interesting.  Motivated buyers are coming back. Like actually motivated. That hasn't happened in years.  Rates are slowly coming down. New Fed leadership hits in May and insiders are already whispering about more cuts coming.  AND inventory is finally opening up. Real options. Real choices. The kind of market where you can actually negotiate again.  This is that window. The one people look back on and say \"I wish I moved on that.\"  The buyers and sellers who act in the next 90 days are going to look like geniuses by end of year.  So tell me something... are you waiting for perfect or are you ready to actually make a move this year?",
       caption: "The 2026 housing market is already starting to feel different, especially in Long Beach and Orange County. Buyer motivation is returning in a meaningful way, and many people who have been waiting for the right moment are finally ready to make a move. This shift is happening alongside gradually improving interest rates and new leadership expected at the Fed this May, which has many watching closely for what comes next.  At the same time, more homes are expected to hit the market. Increased inventory means more choices, healthier negotiations, and a more balanced real estate environment than what we have seen over the past several years. Whether you are buying or selling, understanding these changes early can give you a real advantage.  If you are planning a move in 2026, now is the time to get informed and prepared. This is not the same market we have been navigating since 2020.  What are your predictions for the housing market this year? Drop a comment below.  Rick J. Lee Realtor @ ΓEA⅃ Broker Cell: (714)-943-1598 DRE # 02130981 NMLS 2561007  #RealEstateMarket #2026Housing #OCRealEstate #LongBeachHomes",
     },

@@ -4,7 +4,7 @@
  * and show them content scraped for that market.
  */
 
-export type SupportedCity = "Cape Coral" | "Fort Myers" | "Naples" | "Bonita Springs" | "Lehigh Acres" | "Punta Gorda";
+export type SupportedCity = "Cape Coral" | "Fort Myers" | "Naples" | "Bonita Springs" | "Lehigh Acres" | "Punta Gorda" | "Florida" | "USA";
 
 const ZIP_MAP: Record<string, SupportedCity> = {
   // Cape Coral

@@ -13,6 +13,7 @@ import {
   Animated,
   Pressable,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import SafeArea from "../../components/SafeArea";
 import { useAuthContext } from "../../src/providers/AuthProvider";
 import { useUI } from "../../src/providers/UIProvider";
@@ -20,11 +21,54 @@ import { useDigest } from "../../src/hooks/useDigest";
 import { useAdaptations } from "../../src/hooks/useAdaptations";
 import { getDigestForCity } from "../../src/data/live-digest";
 import type { SupportedCity } from "../../src/data/swfl-zipcodes";
+import type { ContentPlatform } from "../../src/types/database";
 
 function formatViews(n: number): string {
   if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
   if (n >= 1000) return (n / 1000).toFixed(1) + "K";
   return String(n);
+}
+
+/** Maps a ContentPlatform to its Ionicons logo glyph name */
+const PLATFORM_ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
+  instagram: "logo-instagram",
+  youtube: "logo-youtube",
+  tiktok: "logo-tiktok",
+  facebook: "logo-facebook",
+  twitter: "logo-twitter",
+  reddit: "logo-reddit",
+};
+
+/** Small platform icon button that opens the original post URL */
+function PlatformLinkButton({
+  platform,
+  url,
+  selected,
+}: {
+  platform: ContentPlatform | string;
+  url: string;
+  selected: boolean;
+}) {
+  const iconName = PLATFORM_ICON_MAP[platform] || "link-outline";
+  const iconColor = selected
+    ? "rgba(255,255,255,0.50)"
+    : "rgba(255,255,255,0.28)";
+
+  return (
+    <TouchableOpacity
+      onPress={(e) => {
+        e.stopPropagation();
+        Linking.openURL(url);
+      }}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      activeOpacity={0.6}
+      style={styles.platformBtn}
+      accessibilityLabel={`Open on ${platform}`}
+      accessibilityRole="link"
+    >
+      <Ionicons name={iconName as any} size={18} color={iconColor} />
+    </TouchableOpacity>
+  );
 }
 
 type ScopeTab = "city" | "state" | "nation";
@@ -89,8 +133,8 @@ export default function DigestScreen() {
   const [isEditing, setIsEditing] = useState(false);
 
   // Get Florida and USA content
-  const floridaContent = getDigestForCity("Florida" as SupportedCity);
-  const usaContent = getDigestForCity("USA" as SupportedCity);
+  const floridaContent = getDigestForCity("Florida");
+  const usaContent = getDigestForCity("USA");
 
   // Active content based on tab
   const activeContent = activeTab === "city" ? content
@@ -221,6 +265,7 @@ export default function DigestScreen() {
                   onPress={() => handleSelectReel(item.url)}
                   selected={isSelected}
                 >
+                  {/* Row 1: Title + Virality badge */}
                   <View style={styles.postTop}>
                     <Text style={[styles.postTitle, isSelected && styles.postTitleSelected]} numberOfLines={2}>
                       {item.title}
@@ -232,19 +277,22 @@ export default function DigestScreen() {
                       </Text>
                     </View>
                   </View>
-                  <View style={styles.postMeta}>
-                    <Text style={styles.postAuthor}>@{item.creatorHandle}</Text>
-                    <Text style={styles.postDot}>·</Text>
-                    <Text style={styles.postViews}>
-                      {formatViews(item.views || item.likes)} {item.views ? "views" : "likes"}
-                    </Text>
+
+                  {/* Row 2: @handle + views (left) · platform icon (right) */}
+                  <View style={styles.postBottom}>
+                    <View style={styles.postMeta}>
+                      <Text style={styles.postAuthor}>@{item.creatorHandle}</Text>
+                      <Text style={styles.postDot}>·</Text>
+                      <Text style={styles.postViews}>
+                        {formatViews(item.views || item.likes)} {item.views ? "views" : "likes"}
+                      </Text>
+                    </View>
+                    <PlatformLinkButton
+                      platform={item.platform}
+                      url={item.url}
+                      selected={isSelected}
+                    />
                   </View>
-                  <TouchableOpacity
-                    onPress={(e) => { e.stopPropagation(); Linking.openURL(item.url); }}
-                    hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-                  >
-                    <Text style={styles.viewOriginal}>View original post</Text>
-                  </TouchableOpacity>
                 </PressableCard>
               );
             })}
@@ -408,19 +456,23 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   viralScoreSelected: { color: "#4ADE80" },
+  postBottom: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   postMeta: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    flex: 1,
   },
   postAuthor: { fontSize: 12, color: "rgba(255,255,255,0.45)", fontWeight: "500" },
   postDot: { fontSize: 12, color: "rgba(255,255,255,0.2)" },
   postViews: { fontSize: 12, color: "rgba(255,255,255,0.35)" },
-  viewOriginal: {
-    fontSize: 12,
-    color: "rgba(96,165,250,0.8)",
-    marginTop: 10,
-    fontWeight: "500",
+  platformBtn: {
+    padding: 4,
+    marginLeft: 8,
   },
 
   // Generate button

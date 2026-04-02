@@ -226,18 +226,54 @@ async function generateScript(shortcode, title, caption, scope) {
 }
 
 // ---- Virality scoring ----
+// Uses log-scale normalization to handle extreme outliers (e.g. 33M views vs 264 views).
+// Formula matches city scraper weights: views*0.4 + likes*0.3 + comments*0.3
+// When a metric has zero variance (e.g. all comments=0), its weight is redistributed.
 function scoreAndRank(items) {
   if (!items.length) return [];
-  const views = items.map(i => i.views);
-  const likes = items.map(i => i.likes);
-  const minV = Math.min(...views), maxV = Math.max(...views);
-  const minL = Math.min(...likes), maxL = Math.max(...likes);
-  const norm = (v, min, max) => max === min ? 50 : ((v - min) / (max - min)) * 100;
 
-  return items.map(i => ({
-    ...i,
-    viralityScore: Math.round(Math.max(10, Math.min(99, norm(i.views, minV, maxV) * 0.4 + norm(i.likes, minL, maxL) * 0.6))),
-  })).sort((a, b) => b.viralityScore - a.viralityScore);
+  // Log-scale normalization prevents a single viral outlier from crushing all other scores
+  const logNorm = (values) => {
+    const logged = values.map(v => Math.log1p(v));
+    const min = Math.min(...logged), max = Math.max(...logged);
+    return { logged, min, max, hasVariance: max > min };
+  };
+  const norm = (logVal, min, max) => ((logVal - min) / (max - min)) * 100;
+
+  const vInfo = logNorm(items.map(i => i.views));
+  const lInfo = logNorm(items.map(i => i.likes));
+  const cInfo = logNorm(items.map(i => i.comments));
+
+  // Base weights matching city scraper
+  let wV = 0.4, wL = 0.3, wC = 0.3;
+
+  // Redistribute weight from zero-variance metrics (e.g. all comments are 0)
+  const deadWeight =
+    (!vInfo.hasVariance ? wV : 0) +
+    (!lInfo.hasVariance ? wL : 0) +
+    (!cInfo.hasVariance ? wC : 0);
+  const liveCount =
+    (vInfo.hasVariance ? 1 : 0) +
+    (lInfo.hasVariance ? 1 : 0) +
+    (cInfo.hasVariance ? 1 : 0);
+
+  if (liveCount > 0 && deadWeight > 0) {
+    const bonus = deadWeight / liveCount;
+    if (vInfo.hasVariance) wV += bonus;
+    if (lInfo.hasVariance) wL += bonus;
+    if (cInfo.hasVariance) wC += bonus;
+  }
+
+  return items.map((item, idx) => {
+    let score = 0;
+    if (vInfo.hasVariance) score += norm(vInfo.logged[idx], vInfo.min, vInfo.max) * wV;
+    if (lInfo.hasVariance) score += norm(lInfo.logged[idx], lInfo.min, lInfo.max) * wL;
+    if (cInfo.hasVariance) score += norm(cInfo.logged[idx], cInfo.min, cInfo.max) * wC;
+    return {
+      ...item,
+      viralityScore: Math.round(Math.max(10, Math.min(99, score))),
+    };
+  }).sort((a, b) => b.viralityScore - a.viralityScore);
 }
 
 // ---- Main ----
