@@ -13,7 +13,28 @@ const TEMP_DIR = path.resolve(__dirname, "output/temp");
 const TRANSCRIPT_DIR = path.resolve(__dirname, "output/transcripts");
 const SCRIPT_DIR = path.resolve(__dirname, "output/script_cache");
 
-[TEMP_DIR, TRANSCRIPT_DIR, SCRIPT_DIR].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
+const BIO_CACHE_DIR = path.resolve(__dirname, "output/bio_cache");
+[TEMP_DIR, TRANSCRIPT_DIR, SCRIPT_DIR, BIO_CACHE_DIR].forEach(d => { if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true }); });
+
+async function fetchProfileCached(username) {
+  const cachePath = path.join(BIO_CACHE_DIR, `${username}.json`);
+  if (fs.existsSync(cachePath)) return JSON.parse(fs.readFileSync(cachePath, "utf-8"));
+  try {
+    const res = await fetch(`https://i.instagram.com/api/v1/users/web_profile_info/?username=${username}`, {
+      headers: {
+        "User-Agent": "Instagram 275.0.0.27.98 Android (33/13; 420dpi; 1080x2400; samsung; SM-G991B; o1s; exynos2100; en_US; 458229258)",
+        "X-IG-App-ID": "936619743392459",
+      },
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const u = json?.data?.user;
+    if (!u) return null;
+    const profile = { username: u.username, fullName: u.full_name || "", bio: u.biography || "", category: u.category_name || "", followers: u.edge_followed_by?.count || 0 };
+    fs.writeFileSync(cachePath, JSON.stringify(profile, null, 2));
+    return profile;
+  } catch { return null; }
+}
 
 // Yesterday's date
 const yesterday = new Date();
@@ -219,12 +240,42 @@ async function main() {
       await new Promise(r => setTimeout(r, 300));
     }
 
-    // Sort and pick top 5
+    // Sort by virality, then pick top 5 verified RE agents
     withEng.sort((a, b) => b.viralityScore - a.viralityScore);
-    const top5 = withEng.slice(0, 5);
 
-    console.log(`  ${withEng.length} with engagement, top 5:`);
-    top5.forEach(i => console.log(`    👾 ${i.viralityScore} | @${i.author} | ${i.views.toLocaleString()} views | ${i.likes} likes | ${i.comments} comments`));
+    console.log(`  ${withEng.length} candidates, selecting verified agents...`);
+    const top5 = [];
+    for (const item of withEng) {
+      if (top5.length >= 5) break;
+      const profile = await fetchProfileCached(item.author);
+      if (profile) {
+        const allText = ((profile.bio || "") + " " + (profile.fullName || "") + " " + (item.author || "")).toLowerCase();
+        const reKW = ["realtor", "real estate", "realty", "broker", "keller williams", "coldwell banker",
+          "re/max", "remax", "century 21", "compass", "exp realty", "sotheby", "berkshire",
+          "listing agent", "buyer agent", "homes for sale", "dre#", "licensed", "buying and selling", "buying & selling"];
+        const negKW = ["media", "news", "data", "podcast", "coach", "mortgage", "lender", "investor",
+          "wholesale", "flipper", "photographer", "builder", "global feed"];
+        const hasRE = reKW.some(kw => allText.includes(kw));
+        const hasNeg = negKW.some(kw => allText.includes(kw));
+        if (hasRE && !hasNeg) {
+          console.log(`    ✅ @${item.author} | 👾 ${item.viralityScore} | ${item.views.toLocaleString()} views`);
+          top5.push(item);
+        } else {
+          console.log(`    ❌ @${item.author} | skipped`);
+        }
+      } else {
+        // Fallback: check username/title
+        const fallback = (item.author || "").toLowerCase();
+        if (["realtor", "realty", "real estate", "broker"].some(kw => fallback.includes(kw))) {
+          console.log(`    ✅ @${item.author} | 👾 ${item.viralityScore} | (no bio, username match)`);
+          top5.push(item);
+        } else {
+          console.log(`    ⚠️ @${item.author} | skipped (no bio)`);
+        }
+      }
+      await new Promise(r => setTimeout(r, 2000));
+    }
+    console.log(`  Selected ${top5.length} verified agents`);
 
     // Transcribe + script for top 5
     for (const item of top5) {

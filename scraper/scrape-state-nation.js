@@ -225,6 +225,30 @@ async function generateScript(shortcode, title, caption, scope) {
   return "[Failed]";
 }
 
+// ---- Bio fetcher (cached) ----
+const BIO_CACHE_DIR = path.resolve(__dirname, "output/bio_cache");
+if (!fs.existsSync(BIO_CACHE_DIR)) fs.mkdirSync(BIO_CACHE_DIR, { recursive: true });
+
+async function fetchProfileCached(username) {
+  const cachePath = path.join(BIO_CACHE_DIR, `${username}.json`);
+  if (fs.existsSync(cachePath)) return JSON.parse(fs.readFileSync(cachePath, "utf-8"));
+  try {
+    const res = await fetch(`https://i.instagram.com/api/v1/users/web_profile_info/?username=${username}`, {
+      headers: {
+        "User-Agent": "Instagram 275.0.0.27.98 Android (33/13; 420dpi; 1080x2400; samsung; SM-G991B; o1s; exynos2100; en_US; 458229258)",
+        "X-IG-App-ID": "936619743392459",
+      },
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const u = json?.data?.user;
+    if (!u) return null;
+    const profile = { username: u.username, fullName: u.full_name || "", bio: u.biography || "", category: u.category_name || "", followers: u.edge_followed_by?.count || 0 };
+    fs.writeFileSync(cachePath, JSON.stringify(profile, null, 2));
+    return profile;
+  } catch { return null; }
+}
+
 // ---- Virality scoring ----
 // Absolute formula (not normalized):
 //   score = (views / 20) + (likes / 10) + comments
@@ -268,15 +292,59 @@ async function main() {
     }
     console.log(`  ${withEngagement.length} passed 10+ likes filter\n`);
 
-    // Score and pick top 5
+    // Score and pick top 5 verified RE agents
     const scored = scoreAndRank(withEngagement);
-    const top5 = scored.slice(0, 5);
 
-    console.log(`[3] Top 5:`);
-    top5.forEach(i => console.log(`  👾 ${i.viralityScore} | @${i.author} | ${i.views.toLocaleString()} views | ${i.likes} likes`));
+    console.log(`[3] Selecting top 5 verified RE agents...`);
+    const top5 = [];
+    for (const item of scored) {
+      if (top5.length >= 5) break;
+
+      // Check bio
+      const profile = await fetchProfileCached(item.author);
+      if (profile) {
+        const bio = (profile.bio || "").toLowerCase();
+        const fullName = (profile.fullName || "").toLowerCase();
+        const username = (item.author || "").toLowerCase();
+        const allText = bio + " " + fullName + " " + username;
+
+        const reKeywords = ["realtor", "real estate", "realty", "broker", "keller williams",
+          "coldwell banker", "re/max", "remax", "century 21", "compass", "exp realty",
+          "sotheby", "berkshire", "listing agent", "buyer agent", "homes for sale",
+          "dre#", "licensed", "buying and selling", "buying & selling"];
+        const negKeywords = ["media", "news", "data", "podcast", "coach", "mortgage",
+          "lender", "investor", "wholesale", "flipper", "photographer", "builder",
+          "construction company", "global feed"];
+
+        const hasRE = reKeywords.some(kw => allText.includes(kw));
+        const hasNeg = negKeywords.some(kw => allText.includes(kw));
+
+        if (hasRE && !hasNeg) {
+          console.log(`  ✅ @${item.author} | 👾 ${item.viralityScore} | ${item.views.toLocaleString()} views | bio match`);
+          top5.push(item);
+        } else {
+          console.log(`  ❌ @${item.author} | skipped (${hasNeg ? "negative keyword" : "no RE keywords in bio"})`);
+        }
+      } else {
+        // Can't fetch bio — use full_name from post data as fallback
+        const fullName = (item.title || "").toLowerCase();
+        const username = (item.author || "").toLowerCase();
+        const hasFallback = ["realtor", "real estate", "realty", "broker"].some(kw =>
+          fullName.includes(kw) || username.includes(kw));
+        if (hasFallback) {
+          console.log(`  ✅ @${item.author} | 👾 ${item.viralityScore} | (no bio, name/username match)`);
+          top5.push(item);
+        } else {
+          console.log(`  ⚠️ @${item.author} | skipped (no bio, no name match)`);
+        }
+      }
+      await new Promise(r => setTimeout(r, 2000));
+    }
+
+    console.log(`\n  Selected ${top5.length} verified agents\n`);
 
     // Transcribe + generate scripts
-    console.log(`\n[4] Transcribing + generating scripts...`);
+    console.log(`[4] Transcribing + generating scripts...`);
     for (const item of top5) {
       const videoPath = await downloadVideo(item.shortcode);
       await new Promise(r => setTimeout(r, 300));

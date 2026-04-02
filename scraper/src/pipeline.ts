@@ -16,6 +16,7 @@ import { getRealEngagement, RealEngagement } from "./instagram-engagement";
 import { scoreAndRank, pickTop, ScoredContent } from "./virality";
 import { generateScript, getCachedScript } from "./script-generator";
 import { transcribeReel } from "./transcribe";
+import { isRealEstateAgent } from "./bio-checker";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -120,23 +121,52 @@ async function scrapeMarket(market: Market): Promise<DigestItem[]> {
   console.log("[3/5] Calculating virality scores...");
   const scored = scoreAndRank(reels);
 
-  // Step 4: Pick top 5, skip repeats
-  console.log("[4/5] Selecting top 5...");
+  // Step 4: Pick top 5 from verified real estate agents
+  // Walk down the ranked list, check bio for each candidate, keep only agents
+  console.log("[4/7] Selecting top 5 verified real estate agents...");
+  console.log("  (Checking bios starting from highest virality score)\n");
+
   const history = loadHistory();
-  const top = pickTop(scored, config.topN, history);
+  const seenInBatch = new Set<string>();
+  const top: ScoredContent[] = [];
+  let checked = 0;
+  let skippedNotAgent = 0;
+
+  for (const item of scored) {
+    if (top.length >= config.topN) break;
+    if (seenInBatch.has(item.shortcode)) continue;
+    if (history.has(item.shortcode)) continue;
+
+    // Check if this person is a real estate agent
+    checked++;
+    const detection = await isRealEstateAgent({
+      username: item.authorHandle || item.authorName,
+      fullName: (item as any).fullName || "",
+      caption: (item as any).caption || item.title,
+    });
+
+    if (detection.isAgent) {
+      console.log(`  ✅ @${item.authorHandle} (score:${detection.score}, ${detection.confidence}) → 👾 ${item.viralityScore} | ${item.views.toLocaleString()} views`);
+      seenInBatch.add(item.shortcode);
+      top.push(item);
+    } else {
+      console.log(`  ❌ @${item.authorHandle} (score:${detection.score}) — skipped [${detection.negativeMatches.join(",") || "no RE keywords"}]`);
+      skippedNotAgent++;
+    }
+
+    // Rate limit: 2s between bio fetches
+    await new Promise((r) => setTimeout(r, 2000));
+  }
 
   for (const item of top) {
     history.add(item.shortcode);
   }
   saveHistory(history);
 
-  console.log(`  Selected ${top.length} Reels:\n`);
-  for (const item of top) {
-    console.log(`  👾 ${item.viralityScore} — ${item.title.slice(0, 55)}... (${item.views.toLocaleString()} views)`);
-  }
+  console.log(`\n  Checked ${checked} candidates, skipped ${skippedNotAgent} non-agents, selected ${top.length} agents\n`);
 
-  // Step 5: Transcribe videos + Generate scripts with Claude (cached)
-  console.log(`\n[5/6] Transcribing videos with Whisper...`);
+  // Step 5: Transcribe videos
+  console.log("[5/7] Transcribing videos with Whisper...");
 
   const transcripts: Record<string, string> = {};
   for (const item of top) {
@@ -144,7 +174,7 @@ async function scrapeMarket(market: Market): Promise<DigestItem[]> {
     transcripts[item.shortcode] = transcript;
   }
 
-  console.log(`\n[6/6] Generating scripts with Claude (using real transcripts)...`);
+  console.log(`\n[6/7] Generating scripts with Claude (using real transcripts)...`);
   const digestItems: DigestItem[] = [];
 
   for (const item of top) {
