@@ -57,7 +57,7 @@ for (const [key, items] of Object.entries(data)) {
     out += `      shortcode: "${item.shortcode}",\n`;
     out += `      url: "${item.url}",\n`;
     out += `      title: "${esc(item.title)}",\n`;
-    out += `      authorHandle: "${esc(item.authorHandle)}",\n`;
+    out += `      authorHandle: "${esc(item.authorHandle || item.author || '')}",\n`;
     out += `      views: ${item.views},\n`;
     out += `      likes: ${item.likes},\n`;
     out += `      comments: ${item.comments},\n`;
