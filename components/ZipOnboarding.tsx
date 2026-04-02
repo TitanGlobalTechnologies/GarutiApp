@@ -101,7 +101,7 @@ export default function ZipOnboarding({ onComplete }: ZipOnboardingProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0F1923",
+    backgroundColor: "#0A0A0F",
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
@@ -130,8 +130,8 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: "#2a3a4e",
-    backgroundColor: "#1a2636",
+    borderColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(255,255,255,0.05)",
     color: "#fff",
     fontSize: 22,
     textAlign: "center",
