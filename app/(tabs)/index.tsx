@@ -31,7 +31,7 @@ function formatViews(n: number): string {
 
 function formatDate(dateStr?: string): string {
   if (!dateStr) return "";
-  const d = new Date(dateStr + "T12:00:00");
+  const d = dateStr.length === 10 ? new Date(dateStr + "T12:00:00") : new Date(dateStr);
   const now = new Date();
   const diff = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
   if (diff <= 0) return "Today";
@@ -301,7 +301,7 @@ export default function DigestScreen() {
                       <Text style={styles.postViews}>
                         {formatViews(item.views || item.likes)} {item.views ? "views" : "likes"}
                       </Text>
-                      {item.discoveredAt && item.discoveredAt.match(/^\d{4}-\d{2}-\d{2}$/) && (
+                      {item.discoveredAt && item.discoveredAt.match(/^\d{4}-\d{2}-\d{2}/) && (
                         <>
                           <Text style={styles.postDot}>·</Text>
                           <Text style={styles.postDate}>{formatDate(item.discoveredAt)}</Text>
