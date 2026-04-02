@@ -105,7 +105,9 @@ async function scrapeMarket(market: Market): Promise<DigestItem[]> {
         likes: engagement.likeCount,
         comments: engagement.commentCount,
         caption: engagement.caption,
-      });
+        fullName: engagement.authorFullName || "",
+        followers: engagement.followers || 0,
+      } as any);
     } else if (engagement) {
       skipped++;
     }
@@ -129,7 +131,7 @@ async function scrapeMarket(market: Market): Promise<DigestItem[]> {
   const history = loadHistory();
   const seenInBatch = new Set<string>();
   const top: ScoredContent[] = [];
-  let checked = 0;
+  let bioChecked = 0;
   let skippedNotAgent = 0;
 
   for (const item of scored) {
@@ -138,7 +140,7 @@ async function scrapeMarket(market: Market): Promise<DigestItem[]> {
     if (history.has(item.shortcode)) continue;
 
     // Check if this person is a real estate agent
-    checked++;
+    bioChecked++;
     const detection = await isRealEstateAgent({
       username: item.authorHandle || item.authorName,
       fullName: (item as any).fullName || "",
@@ -163,7 +165,7 @@ async function scrapeMarket(market: Market): Promise<DigestItem[]> {
   }
   saveHistory(history);
 
-  console.log(`\n  Checked ${checked} candidates, skipped ${skippedNotAgent} non-agents, selected ${top.length} agents\n`);
+  console.log(`\n  Bio-checked ${bioChecked} candidates, skipped ${skippedNotAgent} non-agents, selected ${top.length} agents\n`);
 
   // Step 5: Transcribe videos
   console.log("[5/7] Transcribing videos with Whisper...");

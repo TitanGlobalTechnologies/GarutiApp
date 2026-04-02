@@ -21,6 +21,8 @@ export interface RealEngagement {
   viewCount: number;
   caption: string;
   authorUsername: string;
+  authorFullName: string;
+  followers: number;
   timestamp: number;
   isVideo: boolean;
 }
@@ -72,6 +74,8 @@ async function fetchGraphQL(shortcode: string): Promise<Partial<RealEngagement> 
       viewCount: media.video_view_count || media.video_play_count || 0,
       caption: media.edge_media_to_caption?.edges?.[0]?.node?.text || "",
       authorUsername: media.owner?.username || "",
+      authorFullName: media.owner?.full_name || "",
+      followers: media.owner?.edge_followed_by?.count || 0,
       timestamp: media.taken_at_timestamp || 0,
       isVideo: media.is_video || false,
       // GraphQL sometimes has these nested differently
@@ -111,6 +115,8 @@ async function fetchMagicParams(shortcode: string): Promise<Partial<RealEngageme
       viewCount: items.view_count || items.play_count || 0,
       caption: items.caption?.text || "",
       authorUsername: items.user?.username || "",
+      authorFullName: items.user?.full_name || "",
+      followers: 0,
       timestamp: items.taken_at || 0,
       isVideo: items.media_type === 2,
     };
@@ -142,6 +148,8 @@ export async function getRealEngagement(url: string): Promise<RealEngagement | n
       viewCount: method2.viewCount || 0,
       caption: method2.caption || "",
       authorUsername: method2.authorUsername || "",
+      authorFullName: method2.authorFullName || "",
+      followers: method2.followers || 0,
       timestamp: method2.timestamp || 0,
       isVideo: method2.isVideo || false,
     };
@@ -159,6 +167,8 @@ export async function getRealEngagement(url: string): Promise<RealEngagement | n
       viewCount: method1.viewCount || 0,
       caption: method1.caption || "",
       authorUsername: method1.authorUsername || "",
+      authorFullName: method1.authorFullName || "",
+      followers: method1.followers || 0,
       timestamp: method1.timestamp || 0,
       isVideo: method1.isVideo || false,
     };
