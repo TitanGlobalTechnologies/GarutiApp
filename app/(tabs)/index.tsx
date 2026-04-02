@@ -18,6 +18,8 @@ import { useAuthContext } from "../../src/providers/AuthProvider";
 import { useUI } from "../../src/providers/UIProvider";
 import { useDigest } from "../../src/hooks/useDigest";
 import { useAdaptations } from "../../src/hooks/useAdaptations";
+import { getDigestForCity } from "../../src/data/live-digest";
+import type { SupportedCity } from "../../src/data/swfl-zipcodes";
 
 function formatViews(n: number): string {
   if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
@@ -86,9 +88,49 @@ export default function DigestScreen() {
   const [editableScript, setEditableScript] = useState("");
   const [isEditing, setIsEditing] = useState(false);
 
+  // Get Florida and USA content
+  const floridaContent = getDigestForCity("Florida" as SupportedCity);
+  const usaContent = getDigestForCity("USA" as SupportedCity);
+
+  // Active content based on tab
+  const activeContent = activeTab === "city" ? content
+    : activeTab === "state" ? floridaContent.map(item => ({
+        url: item.url,
+        title: item.title,
+        caption: item.caption,
+        platform: "instagram" as const,
+        creatorHandle: item.authorHandle,
+        creatorName: item.authorHandle,
+        thumbnail: "",
+        views: item.views,
+        likes: item.likes,
+        comments: item.comments,
+        engagementRate: item.viralityScore,
+        discoveredAt: new Date().toISOString(),
+      }))
+    : usaContent.map(item => ({
+        url: item.url,
+        title: item.title,
+        caption: item.caption,
+        platform: "instagram" as const,
+        creatorHandle: item.authorHandle,
+        creatorName: item.authorHandle,
+        thumbnail: "",
+        views: item.views,
+        likes: item.likes,
+        comments: item.comments,
+        engagementRate: item.viralityScore,
+        discoveredAt: new Date().toISOString(),
+      }));
+
+  // For script lookup, use the right scope
+  const scriptCity = activeTab === "city" ? marketCity
+    : activeTab === "state" ? "Florida"
+    : "USA";
+
   const { adaptations, loading: adaptLoading } = useAdaptations(
     selectedUrl || "",
-    marketCity,
+    scriptCity,
     contentStyle
   );
 
@@ -168,10 +210,10 @@ export default function DigestScreen() {
           ))}
         </View>
 
-        {/* City content */}
-        {activeTab === "city" && content.length > 0 && (
+        {/* Content — same rendering for all tabs */}
+        {activeContent.length > 0 && (
           <>
-            {content.map((item) => {
+            {activeContent.map((item) => {
               const isSelected = selectedUrl === item.url;
               return (
                 <PressableCard
@@ -271,27 +313,6 @@ export default function DigestScreen() {
           </>
         )}
 
-        {/* State tab */}
-        {activeTab === "state" && (
-          <View style={styles.comingSoon}>
-            <Text style={styles.comingSoonIcon}>🌴</Text>
-            <Text style={styles.comingSoonTitle}>Florida's Top Posts</Text>
-            <Text style={styles.comingSoonText}>
-              The most viral real estate content{"\n"}from across Florida. Coming soon.
-            </Text>
-          </View>
-        )}
-
-        {/* Nation tab */}
-        {activeTab === "nation" && (
-          <View style={styles.comingSoon}>
-            <Text style={styles.comingSoonIcon}>🇺🇸</Text>
-            <Text style={styles.comingSoonTitle}>Nationwide Top Posts</Text>
-            <Text style={styles.comingSoonText}>
-              The most viral real estate content{"\n"}from across the country. Coming soon.
-            </Text>
-          </View>
-        )}
 
         <View style={{ height: 32 }} />
       </ScrollView>

@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const data = JSON.parse(fs.readFileSync(path.join(__dirname, "output/digest_all_cities.json"), "utf-8"));
+const data = JSON.parse(fs.readFileSync(path.join(__dirname, "output/digest_all_with_scope.json"), "utf-8"));
 
 const cityMap = {
   "Cape Coral_FL": "Cape Coral",
@@ -10,6 +10,8 @@ const cityMap = {
   "Bonita Springs_FL": "Bonita Springs",
   "Lehigh Acres_FL": "Lehigh Acres",
   "Punta Gorda_FL": "Punta Gorda",
+  "Florida": "Florida",
+  "USA": "USA",
 };
 
 function esc(str) {
