@@ -43,6 +43,7 @@ export interface LiveDigestItem {
   viralityScore: number;
   script: string;
   caption: string;
+  postDate?: string;
 }
 
 export type SupportedCity = "Cape Coral" | "Fort Myers" | "Naples" | "Bonita Springs" | "Lehigh Acres" | "Punta Gorda" | "Florida" | "USA";
@@ -64,6 +65,7 @@ for (const [key, items] of Object.entries(data)) {
     out += `      viralityScore: ${item.viralityScore},\n`;
     out += `      script: "${esc(item.script)}",\n`;
     out += `      caption: "${esc(item.caption || item.title)}",\n`;
+    if (item.date) out += `      postDate: "${item.date}",\n`;
 
     // For Florida/USA entries, embed localized scripts per city
     if (city === "Florida" || city === "USA") {

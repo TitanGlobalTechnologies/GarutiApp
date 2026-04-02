@@ -29,6 +29,16 @@ function formatViews(n: number): string {
   return String(n);
 }
 
+function formatDate(dateStr?: string): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr + "T12:00:00");
+  const now = new Date();
+  const diff = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+  if (diff <= 0) return "Today";
+  if (diff === 1) return "Yesterday";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 function formatScore(n: number): string {
   if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
   if (n >= 10000) return (n / 1000).toFixed(0) + "K";
@@ -291,6 +301,12 @@ export default function DigestScreen() {
                       <Text style={styles.postViews}>
                         {formatViews(item.views || item.likes)} {item.views ? "views" : "likes"}
                       </Text>
+                      {item.discoveredAt && item.discoveredAt.match(/^\d{4}-\d{2}-\d{2}$/) && (
+                        <>
+                          <Text style={styles.postDot}>·</Text>
+                          <Text style={styles.postDate}>{formatDate(item.discoveredAt)}</Text>
+                        </>
+                      )}
                     </View>
                     <PlatformLinkButton
                       platform={item.platform}
@@ -475,6 +491,7 @@ const styles = StyleSheet.create({
   postAuthor: { fontSize: 12, color: "rgba(255,255,255,0.45)", fontWeight: "500" },
   postDot: { fontSize: 12, color: "rgba(255,255,255,0.2)" },
   postViews: { fontSize: 12, color: "rgba(255,255,255,0.35)" },
+  postDate: { fontSize: 12, color: "rgba(255,255,255,0.3)", fontStyle: "italic" as const },
   platformBtn: {
     padding: 4,
     marginLeft: 8,

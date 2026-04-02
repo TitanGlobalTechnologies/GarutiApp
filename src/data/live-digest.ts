@@ -17,6 +17,7 @@ export interface LiveDigestItem {
   viralityScore: number;
   script: string;
   caption: string;
+  postDate?: string;
 }
 
 export type SupportedCity = "Cape Coral" | "Fort Myers" | "Naples" | "Bonita Springs" | "Lehigh Acres" | "Punta Gorda" | "Florida" | "USA";
@@ -158,6 +159,7 @@ export const CITY_DIGESTS: Record<SupportedCity, LiveDigestItem[]> = {
       viralityScore: 10,
       script: "",
       caption: "Where mornings begin on the water and everything else follows effortlessly. This Aqualane Shores is true master piece of quiet luxury, open horizons, and a front-row seat to Naples at its best.  New Price \$12,900,000  contact me for a private showing.  #naples #luxuryrealestate #realestate #florida #explore",
+      postDate: "2026-03-29",
     },
     {
       shortcode: "DWjKacnCm6Q",
@@ -170,6 +172,7 @@ export const CITY_DIGESTS: Record<SupportedCity, LiveDigestItem[]> = {
       viralityScore: 9,
       script: "",
       caption: "Families don’t accidentally end up in Naples.   They choose it.  Here’s what they’re actually choosing.  	1.	Year-round outdoor living — not the idea of it, the actual thing.  	2.	Neighborhoods where kids still roam and parents finally exhale.  	3.	Beach days at Clam Pass that stop being vacations and start being Tuesday.  	4.	Homes with room for grandparents, guests, and everyone staying longer than planned.  	5.	Schools that are excellent without being relentless.  	6.	Weekends that slow down. Dinners that actually happen.  	7.	A lifestyle that’s healthy because Pelican Bay, paddle boards, and the farmers market are just… there.  	8.	Neighbors in the same season of life — building something similar, together.  	9.	More time. With the people who matter most.  I moved here after living in New York, Chicago, and Newport Beach. I stayed for exactly this.  Families don’t move here for the house.  They move here for how life finally feels.  Which one resonates most? Drop the number below.  Follow @buylivesellnaples for real Naples life and real estate.  Cheena Chandra, a luxury real estate advisor selling Naples waterfront and coveted homes and neighborhoods that match how you want to live. #NaplesRealEstate #NaplesLuxuryRealEstate #MoveToNaples #NaplesWaterfront #SWFLRealEstate​​​​​​​​​​​​​​​​",
+      postDate: "2026-03-31",
     },
     {
       shortcode: "DWhcVOpgfPk",
@@ -182,6 +185,7 @@ export const CITY_DIGESTS: Record<SupportedCity, LiveDigestItem[]> = {
       viralityScore: 6,
       script: "",
       caption: "JUST LISTED - OVER 7000 sq ‘ on 3 pristine Acres in Naples - WATCH THIS AMAZING VIDEO.. Priced for today’s market at \$2,999,000 There are homes you visit… and then there are estates that feel like an escape.  Set on three private acres behind lush tropical landscaping and 150 palms, this Mediterranean-inspired residence offers over 7,000 sq ft of light-filled living with soaring 15-foot ceilings, travertine floors, and seamless indoor-outdoor flow.  Featuring 4 bedrooms, 4 baths, a private office, and flexible living spaces, the home is designed for both everyday comfort and effortless entertaining. A separate casita wraps the resort-style pool, creating a setting made for long afternoons, quiet mornings, and unforgettable evenings.  All of this just 20 minutes to Naples’ white sand beaches, dining, and shopping—yet with no HOA or deed restrictions. Complete with a 3-car garage and full-house generator, and positioned below market, this is a rare opportunity to own a private Naples estate that perfectly balances space, luxury, and location.  5237 Mahogany Ridge Dr., Naples  Mark Klecka  Coldwell Banker Realty  941-348-9400  Mark.klecka@cbrealty.com  #naples #naplesflorida #naplesfl #naplesrealestate #naplesrealtor",
+      postDate: "2026-03-30",
     },
     {
       shortcode: "DWmX41GAAHj",
@@ -194,6 +198,7 @@ export const CITY_DIGESTS: Record<SupportedCity, LiveDigestItem[]> = {
       viralityScore: 4,
       script: "",
       caption: "🔑 Another Accepted Offer! ✨  Congratulations to Aimee’s buyer on securing this well-maintained, move-in-ready home! Featuring an updated interior with a warm, inviting feel, the layout strikes the perfect balance of comfort and functionality, ideal for a new chapter in this cozy space. 🏡  A huge shoutout to Aimee Nieroda for her professionalism, market expertise, and dedication in guiding this transaction every step of the way. 👏  Wishing all parties a smooth transaction and a successful closing ahead!  Thinking about buying or selling? We’re here to help!  📞 Contact \"Aimee\" today for a free consultation! 📱 (860) 983-5872 📧 RealtorAimeeN@gmail.com  💻 For more exclusive listings: ⬇️ 🔗 sheilaperez.naplesrealtyma.com  #naplesrealtygroup #agentfriendly #investmentrealstate #homebuyerprocess #realtor® #realestateinvesting #offeraccepted #undercontract",
+      postDate: "2026-04-01",
     },
     {
       shortcode: "DWhjHzYDjPs",
@@ -206,6 +211,7 @@ export const CITY_DIGESTS: Record<SupportedCity, LiveDigestItem[]> = {
       viralityScore: 4,
       script: "",
       caption: "This one has everything.  1161 22nd Ave NE offers a complete setup — interior, space, and functionality all in one property.  4 bedrooms + den 5 bathrooms 2.27 acres  From the inside finishes to the garage and outdoor living, this is the kind of property that’s hard to find already built.  📍1161 22nd Ave NE | Naples  📲 239-289-0749 🌐 maggiesellsnaples.com  #MaggieRodriguez #NaplesRealEstate #GoldenGateEstates",
+      postDate: "2026-03-30",
     },
   ],
   "Punta Gorda": [
@@ -220,6 +226,7 @@ export const CITY_DIGESTS: Record<SupportedCity, LiveDigestItem[]> = {
       viralityScore: 515,
       script: "",
       caption: "📍Punta Gorda \$599,000  📐 1,919 sq ft 🛏️ 4 bedrooms 🛁 3 bathrooms 🚗 2-car garage 🧱 New construction 🪟 Impact windows & doors 🏠 Metal roof 🧱 Paver driveway 🍷 Wine closet 🧼 Tile throughout 🍽️ Quartz countertops  Clean layout with a functional setup and solid finishes throughout.  #puntagordafl #swflrealestate #floridahomesforsale #newconstructionhomes #poolhome",
+      postDate: "2026-03-31",
     },
     {
       shortcode: "DWm1xEHDRTj",
@@ -232,6 +239,7 @@ export const CITY_DIGESTS: Record<SupportedCity, LiveDigestItem[]> = {
       viralityScore: 211,
       script: "",
       caption: "📍 Punta Gorda, Florida \$799,000  🏡 3 bedrooms 🛁 3 bathrooms 📐 2,606 sq ft 🚪 14’ portico entry 📏 12’ ceilings 🚪 8’ interior doors ✨ Glossy tile floors throughout 🍽️ 10’ kitchen island 🌅 Western rear exposure 🏊 Pool 🧱 Paver driveway 🚗 2-car garage 🏠 Tile roof  #puntagordafl #swflrealestate #floridahomesforsale #movingtoflorida #relocationspecialist",
+      postDate: "2026-04-01",
     },
     {
       shortcode: "DWm1xEHDRTj",
@@ -282,6 +290,7 @@ export const CITY_DIGESTS: Record<SupportedCity, LiveDigestItem[]> = {
       viralityScore: 16,
       script: "",
       caption: "Let’s talk about the different areas 👇🏼  Southwest Florida has tons of different lifestyles. The fun part is figuring out which one is for you.   The MLS is saying this:  • Lehigh Acres is the easiest point of entry with a median price of \$315,000. It offers space, affordability, and a slower pace ideal for buyers looking to stretch their dollar   • Cape Coral is the most affordable place to get the waterfront home you’re looking for. It’s laid back but has great growth with new restaurants and shopping coming. For people that like to fish or boat, this is where you’ll thrive.   • Fort Myers has the best historic charm, riverfront views and is great for everyday livability.   • Fort Myers Beach is a lifestyle revolving around sunsets and casual beach living. Beach bars, barefoot strolls and front-row sunset views.   • Bonita Springs is the sweet spot between Naples and Ft Myers, offering relaxed coastal living with just enough buzz. They’ve got a great, up and coming restaurant scene too.   • Estero is a polished, master-planned pocket where convenience, shopping and newer communities steal the spotlight.   • Naples is luxury. High-end shopping, pristine beaches and a polished, resort-style every day lifestyle.   • Marco Island is upscale island living with luxury homes and beautiful white-sand beaches.   Thinking of moving to Southwest Florida and still trying to figure out which part is best for you? Reach out to me and we’ll chat through some options!   #southwestfloridarealtor #capecoralrealtor #floridaliving",
+      postDate: "2026-03-31",
     },
     {
       shortcode: "DWmcYFijfYJ",
@@ -294,6 +303,7 @@ export const CITY_DIGESTS: Record<SupportedCity, LiveDigestItem[]> = {
       viralityScore: 7,
       script: "",
       caption: "Planning to stay in Southwest Florida for the next 3–5 years?  Then you should seriously think about buying.  I’m always honest with my clients… if your plan is to stay long-term, this market may give you opportunities buyers didn’t have a few years ago.  Want the full explanation? Watch the full video on my YouTube channel (link in bio).",
+      postDate: "2026-04-01",
     },
     {
       shortcode: "DWlx1qiAOhi",
@@ -617,6 +627,6 @@ export function getLiveDigestContent(city: SupportedCity = "Cape Coral"): Discov
     likes: item.likes,
     comments: item.comments,
     engagementRate: item.viralityScore,
-    discoveredAt: new Date().toISOString(),
+    discoveredAt: item.postDate || new Date().toISOString(),
   }));
 }
