@@ -17,10 +17,13 @@ const ZIP_MAP: Record<string, SupportedCity> = {
   "33993": "Cape Coral",
   "33915": "Cape Coral",
 
+  // North Fort Myers (mapped to Fort Myers content)
+  "33903": "Fort Myers",
+  "33917": "Fort Myers",
+
   // Fort Myers
   "33901": "Fort Myers",
   "33902": "Fort Myers",
-  "33903": "Fort Myers",
   "33905": "Fort Myers",
   "33906": "Fort Myers",
   "33907": "Fort Myers",

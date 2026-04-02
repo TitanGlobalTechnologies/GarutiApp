@@ -22,7 +22,7 @@ export default function ZipOnboarding({ onComplete }: ZipOnboardingProps) {
       if (city) {
         setMatchedCity(city);
       } else {
-        setError("We don't cover this area yet. Try a SW Florida zip code.");
+        setError("We don't cover this area yet. Try a SW Florida zip code.\nCape Coral: 33914 | Fort Myers: 33901 | Naples: 34102");
       }
     }
   }
