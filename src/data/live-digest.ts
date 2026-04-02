@@ -658,6 +658,6 @@ export function getLiveDigestContent(city: SupportedCity = "Cape Coral"): Discov
     likes: item.likes,
     comments: item.comments,
     engagementRate: item.viralityScore,
-    discoveredAt: new Date().toISOString(),
+    discoveredAt: item.postDate || new Date().toISOString(),
   }));
 }

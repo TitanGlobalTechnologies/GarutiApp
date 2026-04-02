@@ -167,7 +167,7 @@ export default function DigestScreen() {
         likes: item.likes,
         comments: item.comments,
         engagementRate: item.viralityScore,
-        discoveredAt: new Date().toISOString(),
+        discoveredAt: item.postDate || new Date().toISOString(),
       }))
     : usaContent.map(item => ({
         url: item.url,
@@ -181,7 +181,7 @@ export default function DigestScreen() {
         likes: item.likes,
         comments: item.comments,
         engagementRate: item.viralityScore,
-        discoveredAt: new Date().toISOString(),
+        discoveredAt: item.postDate || new Date().toISOString(),
       }));
 
   // Always pass user's city for script lookup — state/nation scripts
