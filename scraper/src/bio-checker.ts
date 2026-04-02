@@ -32,6 +32,52 @@ export async function fetchProfile(username: string): Promise<ProfileData | null
     return JSON.parse(fs.readFileSync(cachePath, "utf-8"));
   }
 
+  // Method 1: Fetch profile page as Googlebot — gets og:description with bio info
+  // This is NOT rate limited like the API endpoint
+  try {
+    const res = await fetch(`https://www.instagram.com/${username}/`, {
+      headers: {
+        "User-Agent": "Googlebot/2.1 (+http://www.google.com/bot.html)",
+        "Accept": "text/html",
+      },
+    });
+
+    if (res.ok) {
+      const html = await res.text();
+      const ogDesc = html.match(/og:description.*?content="([^"]*)"/i);
+      if (ogDesc?.[1]) {
+        // Parse: "41K Followers, 2,599 Following, 783 Posts - See Instagram photos and videos from Melissa Orta | Southwest, FL Real Estate Broker Associate (@meli..."
+        const desc = ogDesc[1].replace(/&#064;/g, "@");
+        const nameMatch = desc.match(/from\s+(.+?)(?:\s*\(@|\s*$)/);
+        const fullName = nameMatch?.[1]?.trim() || "";
+
+        // The og:description contains the display name which often has their title
+        // We use the full description as the "bio" since it captures the name + role
+        const profile: ProfileData = {
+          username,
+          fullName,
+          bio: fullName, // The display name IS the bio signal (e.g., "Melissa Orta | Southwest, FL Real Estate Broker Associate")
+          category: "",
+          isBusiness: false,
+          followers: 0,
+        };
+
+        // Try to extract follower count
+        const followersMatch = desc.match(/([\d,.]+[KkMm]?)\s*Followers/i);
+        if (followersMatch) {
+          const raw = followersMatch[1].replace(/,/g, "");
+          if (raw.endsWith("K") || raw.endsWith("k")) profile.followers = parseFloat(raw) * 1000;
+          else if (raw.endsWith("M") || raw.endsWith("m")) profile.followers = parseFloat(raw) * 1000000;
+          else profile.followers = parseInt(raw) || 0;
+        }
+
+        fs.writeFileSync(cachePath, JSON.stringify(profile, null, 2));
+        return profile;
+      }
+    }
+  } catch {}
+
+  // Method 2: Try the API endpoint (may be rate limited)
   try {
     const res = await fetch(
       `https://i.instagram.com/api/v1/users/web_profile_info/?username=${username}`,
@@ -43,31 +89,26 @@ export async function fetchProfile(username: string): Promise<ProfileData | null
       }
     );
 
-    if (!res.ok) {
-      console.log(`  [bio] @${username}: HTTP ${res.status}`);
-      return null;
+    if (res.ok) {
+      const json = (await res.json()) as any;
+      const user = json?.data?.user;
+      if (user) {
+        const profile: ProfileData = {
+          username: user.username || username,
+          fullName: user.full_name || "",
+          bio: user.biography || "",
+          category: user.category_name || "",
+          isBusiness: user.is_business_account || false,
+          followers: user.edge_followed_by?.count || 0,
+        };
+        fs.writeFileSync(cachePath, JSON.stringify(profile, null, 2));
+        return profile;
+      }
     }
+  } catch {}
 
-    const json = (await res.json()) as any;
-    const user = json?.data?.user;
-    if (!user) return null;
-
-    const profile: ProfileData = {
-      username: user.username || username,
-      fullName: user.full_name || "",
-      bio: user.biography || "",
-      category: user.category_name || "",
-      isBusiness: user.is_business_account || false,
-      followers: user.edge_followed_by?.count || 0,
-    };
-
-    // Cache it forever
-    fs.writeFileSync(cachePath, JSON.stringify(profile, null, 2));
-    return profile;
-  } catch (err: any) {
-    console.log(`  [bio] @${username}: error ${err.message}`);
-    return null;
-  }
+  console.log(`  [bio] @${username}: could not fetch profile`);
+  return null;
 }
 
 /**

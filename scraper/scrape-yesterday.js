@@ -20,17 +20,24 @@ async function fetchProfileCached(username) {
   const cachePath = path.join(BIO_CACHE_DIR, `${username}.json`);
   if (fs.existsSync(cachePath)) return JSON.parse(fs.readFileSync(cachePath, "utf-8"));
   try {
-    const res = await fetch(`https://i.instagram.com/api/v1/users/web_profile_info/?username=${username}`, {
-      headers: {
-        "User-Agent": "Instagram 275.0.0.27.98 Android (33/13; 420dpi; 1080x2400; samsung; SM-G991B; o1s; exynos2100; en_US; 458229258)",
-        "X-IG-App-ID": "936619743392459",
-      },
+    const res = await fetch(`https://www.instagram.com/${username}/`, {
+      headers: { "User-Agent": "Googlebot/2.1 (+http://www.google.com/bot.html)", "Accept": "text/html" },
     });
     if (!res.ok) return null;
-    const json = await res.json();
-    const u = json?.data?.user;
-    if (!u) return null;
-    const profile = { username: u.username, fullName: u.full_name || "", bio: u.biography || "", category: u.category_name || "", followers: u.edge_followed_by?.count || 0 };
+    const html = await res.text();
+    const ogDesc = html.match(/og:description.*?content="([^"]*)"/i);
+    if (!ogDesc?.[1]) return null;
+    const desc = ogDesc[1].replace(/&#064;/g, "@");
+    const nameMatch = desc.match(/from\s+(.+?)(?:\s*\(@|\s*$)/);
+    const fullName = nameMatch?.[1]?.trim() || "";
+    const profile = { username, fullName, bio: fullName, category: "", followers: 0 };
+    const fMatch = desc.match(/([\d,.]+[KkMm]?)\s*Followers/i);
+    if (fMatch) {
+      const raw = fMatch[1].replace(/,/g, "");
+      if (raw.endsWith("K") || raw.endsWith("k")) profile.followers = parseFloat(raw) * 1000;
+      else if (raw.endsWith("M") || raw.endsWith("m")) profile.followers = parseFloat(raw) * 1000000;
+      else profile.followers = parseInt(raw) || 0;
+    }
     fs.writeFileSync(cachePath, JSON.stringify(profile, null, 2));
     return profile;
   } catch { return null; }
