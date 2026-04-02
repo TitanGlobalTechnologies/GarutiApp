@@ -112,7 +112,7 @@ export default function DigestScreen() {
         {/* Scope tabs: City / State / Nation */}
         <View style={styles.tabRow}>
           {([
-            { key: "nation" as ScopeTab, label: "Nation" },
+            { key: "nation" as ScopeTab, label: "USA" },
             { key: "state" as ScopeTab, label: "Florida" },
             { key: "city" as ScopeTab, label: marketCity },
           ]).map((tab) => (
@@ -146,17 +146,12 @@ export default function DigestScreen() {
                 >
                   <View style={[styles.postCard, isSelected && styles.postCardSelected]}>
                     <View style={styles.postHeader}>
-                      <View style={styles.postRadio}>
-                        <View style={[styles.radioOuter, isSelected && styles.radioOuterActive]}>
-                          {isSelected && <View style={styles.radioInner} />}
-                        </View>
-                      </View>
+                      <Text style={[styles.postTitle, isSelected && styles.postTitleSelected]} numberOfLines={2}>{item.title}</Text>
                       <View style={styles.viralBadge}>
                         <Text style={styles.viralIcon}>👾</Text>
                         <Text style={styles.viralScore}>{Math.round(item.engagementRate)}</Text>
                       </View>
                     </View>
-                    <Text style={styles.postTitle} numberOfLines={2}>{item.title}</Text>
                     <View style={styles.postMeta}>
                       <Text style={styles.postAuthor}>@{item.creatorHandle}</Text>
                       <Text style={styles.postDot}>·</Text>
@@ -307,21 +302,11 @@ const styles = StyleSheet.create({
   postHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
+    alignItems: "flex-start",
+    gap: 10,
+    marginBottom: 6,
   },
-  postRadio: {},
-  radioOuter: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: "#2a3a4e",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  radioOuterActive: { borderColor: "#F97316" },
-  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#F97316" },
+  postTitleSelected: { color: "#F97316" },
   viralBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -333,7 +318,7 @@ const styles = StyleSheet.create({
   },
   viralIcon: { fontSize: 14 },
   viralScore: { color: "#4ADE80", fontSize: 14, fontWeight: "700" },
-  postTitle: { fontSize: 15, fontWeight: "600", color: "#fff", lineHeight: 21 },
+  postTitle: { fontSize: 15, fontWeight: "600", color: "#fff", lineHeight: 21, flex: 1 },
   postMeta: {
     flexDirection: "row",
     alignItems: "center",

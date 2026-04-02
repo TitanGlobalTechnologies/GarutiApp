@@ -84,9 +84,9 @@ export default function RootLayout() {
         <PhoneFrame>
           <ZipOnboarding
             onComplete={() => {
-              setZipKey((k) => k + 1); // Force remount of providers
+              setZipKey((k) => k + 1);
               setHasZip(true);
-            }
+            }}
           />
         </PhoneFrame>
       </SafeAreaProvider>
