@@ -50,10 +50,45 @@ export type SupportedCity = "Cape Coral" | "Fort Myers" | "Naples" | "Bonita Spr
 
 export const CITY_DIGESTS: Record<SupportedCity, LiveDigestItem[]> = {\n`;
 
+const MAX_AGE_DAYS = 7;
+const MAX_POSTS = 5;
+const now = new Date();
+
 for (const [key, items] of Object.entries(data)) {
   const city = cityMap[key] || key;
+
+  // --- Safety net: filter stale posts (max 7 days old) ---
+  const fresh = items.filter(item => {
+    const dateStr = item.date || item.postDate;
+    if (!dateStr) return true; // no date = keep (legacy data)
+    const d = new Date(dateStr);
+    const ageDays = (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24);
+    return ageDays <= MAX_AGE_DAYS;
+  });
+
+  // --- Safety net: dedup by shortcode + author (1 post per author) ---
+  const seenShortcodes = new Set();
+  const seenAuthors = new Set();
+  const deduped = fresh.filter(item => {
+    const sc = item.shortcode;
+    const author = (item.author || item.authorHandle || "").toLowerCase();
+    if (seenShortcodes.has(sc)) return false;
+    if (author && seenAuthors.has(author)) return false;
+    seenShortcodes.add(sc);
+    if (author) seenAuthors.add(author);
+    return true;
+  });
+
+  // Cap at top 5
+  const final = deduped.slice(0, MAX_POSTS);
+
+  const dropped = items.length - final.length;
+  if (dropped > 0) {
+    console.log(`  ${city}: ${items.length} → ${final.length} posts (dropped ${dropped}: stale/duplicate)`);
+  }
+
   out += `  "${city}": [\n`;
-  for (const item of items) {
+  for (const item of final) {
     out += `    {\n`;
     out += `      shortcode: "${item.shortcode}",\n`;
     out += `      url: "${item.url}",\n`;
@@ -105,11 +140,11 @@ export function getLiveDigestContent(city: SupportedCity = "Cape Coral"): Discov
     likes: item.likes,
     comments: item.comments,
     engagementRate: item.viralityScore,
-    discoveredAt: new Date().toISOString(),
+    discoveredAt: item.postDate || new Date().toISOString().split("T")[0],
   }));
 }
 `;
 
 const outPath = path.join(__dirname, "../src/data/live-digest.ts");
 fs.writeFileSync(outPath, out);
-console.log("Generated live-digest.ts with " + Object.keys(data).length + " cities, " + Object.values(data).reduce((s, a) => s + a.length, 0) + " posts");
+console.log("Generated live-digest.ts with " + Object.keys(data).length + " cities, " + Object.values(data).reduce((s, a) => s + a.length, 0) + " total input posts");

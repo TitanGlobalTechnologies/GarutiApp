@@ -1,12 +1,14 @@
 // Scrape Florida-wide and USA-wide real estate content
-// Florida: location=Florida,United States
-// USA: location=United States, gl=us
+// Uses day-by-day lookback (yesterday first, max 7 days)
+// Enforces 1 post per author (unique agents only)
 
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
 const dotenv = require("dotenv");
 dotenv.config({ path: path.resolve(__dirname, ".env") });
+
+const { checkAgent } = require("./src/agent-check");
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
@@ -18,31 +20,46 @@ if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
 if (!fs.existsSync(TRANSCRIPT_DIR)) fs.mkdirSync(TRANSCRIPT_DIR, { recursive: true });
 if (!fs.existsSync(SCRIPT_DIR)) fs.mkdirSync(SCRIPT_DIR, { recursive: true });
 
+const MAX_DAYS_BACK = 7;
+const TARGET_POSTS = 5;
+
 const SCOPES = [
   {
     name: "Florida",
     location: "Florida,United States",
     queries: [
-      'site:instagram.com/reel "Florida" real estate',
-      'site:instagram.com/reel "FL" homes for sale',
-      'site:instagram.com/reel "Florida" housing market 2026',
-      'site:instagram.com/reel "Florida" realtor home tour',
+      'site:instagram.com/reel intext:"realtor" "Florida"',
+      'site:instagram.com/reel intext:"real estate agent" "Florida"',
+      'site:instagram.com/reel intext:"broker" "Florida" homes',
+      'site:instagram.com/reel "keller williams" OR "coldwell banker" OR "re/max" OR "compass" "Florida"',
     ],
   },
   {
     name: "USA",
     location: "United States",
     queries: [
-      'site:instagram.com/reel real estate 2026',
-      'site:instagram.com/reel homes for sale viral',
-      'site:instagram.com/reel housing market 2026',
-      'site:instagram.com/reel realtor home tour',
+      'site:instagram.com/reel intext:"realtor" home tour',
+      'site:instagram.com/reel intext:"real estate agent" homes',
+      'site:instagram.com/reel intext:"just listed" OR intext:"just sold"',
+      'site:instagram.com/reel "keller williams" OR "coldwell banker" OR "re/max" OR "compass" real estate',
     ],
   },
 ];
 
-// ---- SerpAPI ----
-async function serpSearch(query, location) {
+// ---- Date helpers ----
+function formatDateFilter(date) {
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  const yyyy = date.getFullYear();
+  return `cdr:1,cd_min:${mm}/${dd}/${yyyy},cd_max:${mm}/${dd}/${yyyy}`;
+}
+
+function formatDateLabel(date) {
+  return date.toISOString().split("T")[0];
+}
+
+// ---- SerpAPI (single page, single day) ----
+async function serpSearchDay(query, location, dateFilter) {
   const params = new URLSearchParams({
     api_key: SERPAPI_KEY,
     engine: "google",
@@ -50,60 +67,18 @@ async function serpSearch(query, location) {
     location: location,
     gl: "us",
     hl: "en",
-    tbs: "cdr:1,cd_min:01/01/2026,cd_max:12/31/2026",
+    tbs: dateFilter,
     num: "10",
   });
   const res = await fetch(`https://serpapi.com/search.json?${params}`);
-  if (!res.ok) { console.log(`  [serp] Error: ${res.status}`); return []; }
+  if (!res.ok) { console.log(`    [serp] Error: ${res.status}`); return []; }
   const data = await res.json();
-  if (data.error) { console.log(`  [serp] ${data.error}`); return []; }
+  if (data.error) { console.log(`    [serp] ${data.error}`); return []; }
   return (data.organic_results || []).map(r => ({
     title: r.title,
     url: r.link,
     snippet: r.snippet || "",
   }));
-}
-
-async function discoverReels(queries, location) {
-  const all = [];
-  let searches = 0;
-  for (const q of queries) {
-    for (let start = 0; start < 30; start += 10) {
-      const params = new URLSearchParams({
-        api_key: SERPAPI_KEY,
-        engine: "google",
-        q: q,
-        location: location,
-        gl: "us",
-        hl: "en",
-        tbs: "cdr:1,cd_min:01/01/2026,cd_max:12/31/2026",
-        num: "10",
-        start: String(start),
-      });
-      console.log(`  [serp] ${q} (start=${start})`);
-      const res = await fetch(`https://serpapi.com/search.json?${params}`);
-      searches++;
-      if (!res.ok) break;
-      const data = await res.json();
-      if (data.error) break;
-      const results = data.organic_results || [];
-      all.push(...results.map(r => ({ title: r.title, url: r.link, snippet: r.snippet || "" })));
-      if (results.length < 10) break;
-      await new Promise(r => setTimeout(r, 1000));
-    }
-  }
-  // Dedup by shortcode
-  const seen = new Set();
-  const unique = all.filter(r => {
-    if (!r.url.includes("instagram.com/reel/") && !r.url.includes("instagram.com/p/")) return false;
-    const m = r.url.match(/(?:reel|p)\/([A-Za-z0-9_-]+)/);
-    const sc = m ? m[1] : r.url;
-    if (seen.has(sc)) return false;
-    seen.add(sc);
-    return true;
-  });
-  console.log(`  [serp] ${all.length} raw -> ${unique.length} unique (${searches} searches used)\n`);
-  return { results: unique, searches };
 }
 
 // ---- Instagram engagement ----
@@ -233,7 +208,6 @@ async function fetchProfileCached(username) {
   const cachePath = path.join(BIO_CACHE_DIR, `${username}.json`);
   if (fs.existsSync(cachePath)) return JSON.parse(fs.readFileSync(cachePath, "utf-8"));
   try {
-    // Googlebot approach — not rate limited
     const res = await fetch(`https://www.instagram.com/${username}/`, {
       headers: { "User-Agent": "Googlebot/2.1 (+http://www.google.com/bot.html)", "Accept": "text/html" },
     });
@@ -258,10 +232,6 @@ async function fetchProfileCached(username) {
 }
 
 // ---- Virality scoring ----
-// Absolute formula (not normalized):
-//   score = (views / 20) + (likes / 10) + comments
-//   20 views = 1 point, 10 likes = 1 point, 1 comment = 1 point
-//   No cap. Displayed as up to 3 digits in UI.
 function scoreAndRank(items) {
   if (!items.length) return [];
   return items.map(item => ({
@@ -272,7 +242,7 @@ function scoreAndRank(items) {
 
 // ---- Main ----
 async function main() {
-  console.log("\n=== Scraping Florida + USA ===\n");
+  console.log("\n=== Scraping Florida + USA (lookback, max " + MAX_DAYS_BACK + " days) ===\n");
   const output = {};
   let totalSearches = 0;
 
@@ -281,75 +251,92 @@ async function main() {
     console.log(`  ${scope.name} (location: ${scope.location})`);
     console.log(`${"=".repeat(50)}\n`);
 
-    // Discover
-    const { results, searches } = await discoverReels(scope.queries, scope.location);
-    totalSearches += searches;
-
-    // Engagement
-    console.log(`[2] Checking engagement for ${results.length} URLs...`);
-    const withEngagement = [];
-    for (const r of results) {
-      const eng = await getEngagement(r.url);
-      if (eng && eng.likes >= 10) {
-        withEngagement.push({
-          ...eng,
-          title: r.title.replace(" | Instagram", "").replace(" on Instagram:", "").trim(),
-        });
-      }
-      await new Promise(r => setTimeout(r, 500));
-    }
-    console.log(`  ${withEngagement.length} passed 10+ likes filter\n`);
-
-    // Score and pick top 5 verified RE agents
-    const scored = scoreAndRank(withEngagement);
-
-    console.log(`[3] Selecting top 5 verified RE agents...`);
     const top5 = [];
-    for (const item of scored) {
-      if (top5.length >= 5) break;
+    const seenShortcodes = new Set();
+    const seenAuthors = new Set();
 
-      // Check bio
-      const profile = await fetchProfileCached(item.author);
-      if (profile) {
-        const bio = (profile.bio || "").toLowerCase();
-        const fullName = (profile.fullName || "").toLowerCase();
-        const username = (item.author || "").toLowerCase();
-        const allText = bio + " " + fullName + " " + username;
+    // Day-by-day lookback: yesterday first, then day before, etc.
+    for (let daysBack = 1; daysBack <= MAX_DAYS_BACK; daysBack++) {
+      if (top5.length >= TARGET_POSTS) break;
 
-        const reKeywords = ["realtor", "real estate", "realty", "broker", "keller williams",
-          "coldwell banker", "re/max", "remax", "century 21", "compass", "exp realty",
-          "sotheby", "berkshire", "listing agent", "buyer agent", "homes for sale",
-          "dre#", "licensed", "buying and selling", "buying & selling"];
-        const negKeywords = ["media", "news", "data", "podcast", "coach", "mortgage",
-          "lender", "investor", "wholesale", "flipper", "photographer", "builder",
-          "construction company", "global feed"];
+      const date = new Date();
+      date.setDate(date.getDate() - daysBack);
+      const dateFilter = formatDateFilter(date);
+      const dateLabel = formatDateLabel(date);
 
-        const hasRE = reKeywords.some(kw => allText.includes(kw));
-        const hasNeg = negKeywords.some(kw => allText.includes(kw));
+      console.log(`\n  --- Day ${daysBack}: ${dateLabel} ---`);
 
-        if (hasRE && !hasNeg) {
-          console.log(`  ✅ @${item.author} | 👾 ${item.viralityScore} | ${item.views.toLocaleString()} views | bio match`);
-          top5.push(item);
-        } else {
-          console.log(`  ❌ @${item.author} | skipped (${hasNeg ? "negative keyword" : "no RE keywords in bio"})`);
-        }
-      } else {
-        // Can't fetch bio — use full_name from post data as fallback
-        const fullName = (item.title || "").toLowerCase();
-        const username = (item.author || "").toLowerCase();
-        const hasFallback = ["realtor", "real estate", "realty", "broker"].some(kw =>
-          fullName.includes(kw) || username.includes(kw));
-        if (hasFallback) {
-          console.log(`  ✅ @${item.author} | 👾 ${item.viralityScore} | (no bio, name/username match)`);
-          top5.push(item);
-        } else {
-          console.log(`  ⚠️ @${item.author} | skipped (no bio, no name match)`);
-        }
+      // Discover reels for this single day
+      const dayResults = [];
+      for (const q of scope.queries) {
+        console.log(`    [serp] ${q}`);
+        const results = await serpSearchDay(q, scope.location, dateFilter);
+        totalSearches++;
+        dayResults.push(...results);
+        await new Promise(r => setTimeout(r, 1000));
       }
-      await new Promise(r => setTimeout(r, 2000));
+
+      // Dedup by shortcode within this day's results
+      const unique = dayResults.filter(r => {
+        if (!r.url.includes("instagram.com/reel/") && !r.url.includes("instagram.com/p/")) return false;
+        const m = r.url.match(/(?:reel|p)\/([A-Za-z0-9_-]+)/);
+        const sc = m ? m[1] : r.url;
+        if (seenShortcodes.has(sc)) return false;
+        seenShortcodes.add(sc);
+        return true;
+      });
+
+      console.log(`    ${dayResults.length} raw -> ${unique.length} new unique URLs`);
+
+      // Check engagement + verify agent + dedup by author
+      for (const r of unique) {
+        if (top5.length >= TARGET_POSTS) break;
+
+        const eng = await getEngagement(r.url);
+        if (!eng) continue;
+
+        // Author dedup
+        const authorKey = (eng.author || "").toLowerCase();
+        if (authorKey && seenAuthors.has(authorKey)) {
+          console.log(`    ⏭️  @${eng.author} | skipped (duplicate author)`);
+          continue;
+        }
+
+        // Check if RE agent using tiered detection
+        const profile = await fetchProfileCached(eng.author);
+        const detection = checkAgent({
+          bio: profile?.bio || profile?.fullName || "",
+          fullName: profile?.fullName || "",
+          username: eng.author || "",
+          caption: eng.caption || r.title || "",
+        });
+
+        if (!detection.isAgent) {
+          console.log(`    ❌ @${eng.author} | skipped (tier:${detection.tier} signals:[${detection.signals.join(",")}] neg:[${detection.negatives.join(",")}])`);
+        }
+
+        if (detection.isAgent) {
+          const score = Math.round((eng.views / 20) + (eng.likes / 10) + (eng.comments || 0));
+          console.log(`    ✅ @${eng.author} | 👾 ${score} | ${eng.views.toLocaleString()} views | ${dateLabel}`);
+          seenAuthors.add(authorKey);
+          top5.push({
+            ...eng,
+            title: r.title.replace(" | Instagram", "").replace(" on Instagram:", "").trim(),
+            viralityScore: score,
+            date: dateLabel,
+          });
+        }
+
+        await new Promise(r => setTimeout(r, 800));
+      }
+
+      console.log(`    Running total: ${top5.length}/${TARGET_POSTS} agents`);
     }
 
-    console.log(`\n  Selected ${top5.length} verified agents\n`);
+    // Sort final list by virality score
+    top5.sort((a, b) => b.viralityScore - a.viralityScore);
+
+    console.log(`\n  Selected ${top5.length} verified agents for ${scope.name}\n`);
 
     // Transcribe + generate scripts
     console.log(`[4] Transcribing + generating scripts...`);

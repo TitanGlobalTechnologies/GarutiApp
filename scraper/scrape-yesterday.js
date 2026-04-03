@@ -7,6 +7,8 @@ const { execSync } = require("child_process");
 const dotenv = require("dotenv");
 dotenv.config({ path: path.resolve(__dirname, ".env") });
 
+const { checkAgent } = require("./src/agent-check");
+
 const SERPAPI_KEY = process.env.SERPAPI_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const TEMP_DIR = path.resolve(__dirname, "output/temp");
@@ -252,33 +254,31 @@ async function main() {
 
     console.log(`  ${withEng.length} candidates, selecting verified agents...`);
     const top5 = [];
+    const seenAuthors = new Set();
     for (const item of withEng) {
       if (top5.length >= 5) break;
+
+      // Author dedup — 1 post per author
+      const authorKey = (item.author || "").toLowerCase();
+      if (authorKey && seenAuthors.has(authorKey)) {
+        console.log(`    ⏭️  @${item.author} | skipped (duplicate author)`);
+        continue;
+      }
+
       const profile = await fetchProfileCached(item.author);
-      if (profile) {
-        const allText = ((profile.bio || "") + " " + (profile.fullName || "") + " " + (item.author || "")).toLowerCase();
-        const reKW = ["realtor", "real estate", "realty", "broker", "keller williams", "coldwell banker",
-          "re/max", "remax", "century 21", "compass", "exp realty", "sotheby", "berkshire",
-          "listing agent", "buyer agent", "homes for sale", "dre#", "licensed", "buying and selling", "buying & selling"];
-        const negKW = ["media", "news", "data", "podcast", "coach", "mortgage", "lender", "investor",
-          "wholesale", "flipper", "photographer", "builder", "global feed"];
-        const hasRE = reKW.some(kw => allText.includes(kw));
-        const hasNeg = negKW.some(kw => allText.includes(kw));
-        if (hasRE && !hasNeg) {
-          console.log(`    ✅ @${item.author} | 👾 ${item.viralityScore} | ${item.views.toLocaleString()} views`);
-          top5.push(item);
-        } else {
-          console.log(`    ❌ @${item.author} | skipped`);
-        }
+      const detection = checkAgent({
+        bio: profile?.bio || profile?.fullName || "",
+        fullName: profile?.fullName || "",
+        username: item.author || "",
+        caption: item.caption || item.title || "",
+      });
+
+      if (detection.isAgent) {
+        console.log(`    ✅ @${item.author} | 👾 ${item.viralityScore} | ${item.views.toLocaleString()} views | tier:${detection.tier} [${detection.signals.join(",")}]`);
+        seenAuthors.add(authorKey);
+        top5.push(item);
       } else {
-        // Fallback: check username/title
-        const fallback = (item.author || "").toLowerCase();
-        if (["realtor", "realty", "real estate", "broker"].some(kw => fallback.includes(kw))) {
-          console.log(`    ✅ @${item.author} | 👾 ${item.viralityScore} | (no bio, username match)`);
-          top5.push(item);
-        } else {
-          console.log(`    ⚠️ @${item.author} | skipped (no bio)`);
-        }
+        console.log(`    ❌ @${item.author} | skipped (signals:[${detection.signals.join(",")}] neg:[${detection.negatives.join(",")}])`);
       }
       await new Promise(r => setTimeout(r, 2000));
     }

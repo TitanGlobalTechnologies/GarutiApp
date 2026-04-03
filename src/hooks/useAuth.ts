@@ -14,6 +14,10 @@ function getStoredZip(): string {
 }
 
 function getStoredCity(): string {
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    const city = window.localStorage?.getItem("lae_city");
+    if (city) return city;
+  }
   const zip = getStoredZip();
   return matchZipToCity(zip) || "Cape Coral";
 }

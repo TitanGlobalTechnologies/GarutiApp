@@ -67,7 +67,7 @@ async function scrapeMarket(market: Market): Promise<DigestItem[]> {
   console.log("[2/5] Fetching REAL engagement data from Instagram...");
   console.log("  (This checks actual likes/views/comments for each post)\n");
 
-  const MIN_LIKES = 10; // Filter threshold — only keep posts with real engagement
+  // No minimum likes filter — virality formula handles ranking
   const reelsWithEngagement: Array<{
     shortcode: string;
     url: string;
@@ -92,7 +92,7 @@ async function scrapeMarket(market: Market): Promise<DigestItem[]> {
     const engagement = await getRealEngagement(result.url);
     checked++;
 
-    if (engagement && engagement.likeCount >= MIN_LIKES) {
+    if (engagement) {
       const title = result.title.replace(" | Instagram", "").replace(" on Instagram:", "").trim();
       reelsWithEngagement.push({
         shortcode: engagement.shortcode,
@@ -108,15 +108,13 @@ async function scrapeMarket(market: Market): Promise<DigestItem[]> {
         fullName: engagement.authorFullName || "",
         followers: engagement.followers || 0,
       } as any);
-    } else if (engagement) {
-      skipped++;
     }
 
     // Rate limit: 500ms between requests to be respectful
     await new Promise((r) => setTimeout(r, 500));
   }
 
-  console.log(`\n  Checked ${checked} posts | Passed filter (${MIN_LIKES}+ likes): ${reelsWithEngagement.length} | Filtered out: ${skipped}\n`);
+  console.log(`\n  Checked ${checked} posts | With engagement data: ${reelsWithEngagement.length}\n`);
   const reels = reelsWithEngagement;
 
   // Step 3: Score by virality
@@ -130,6 +128,7 @@ async function scrapeMarket(market: Market): Promise<DigestItem[]> {
 
   const history = loadHistory();
   const seenInBatch = new Set<string>();
+  const seenAuthors = new Set<string>();
   const top: ScoredContent[] = [];
   let bioChecked = 0;
   let skippedNotAgent = 0;
@@ -138,6 +137,13 @@ async function scrapeMarket(market: Market): Promise<DigestItem[]> {
     if (top.length >= config.topN) break;
     if (seenInBatch.has(item.shortcode)) continue;
     if (history.has(item.shortcode)) continue;
+
+    // Author dedup — 1 post per author
+    const authorKey = (item.authorHandle || item.authorName || "").toLowerCase();
+    if (authorKey && seenAuthors.has(authorKey)) {
+      console.log(`  ⏭️ @${item.authorHandle} | skipped (duplicate author)`);
+      continue;
+    }
 
     // Check if this person is a real estate agent
     bioChecked++;
@@ -150,6 +156,7 @@ async function scrapeMarket(market: Market): Promise<DigestItem[]> {
     if (detection.isAgent) {
       console.log(`  ✅ @${item.authorHandle} (score:${detection.score}, ${detection.confidence}) → 👾 ${item.viralityScore} | ${item.views.toLocaleString()} views`);
       seenInBatch.add(item.shortcode);
+      seenAuthors.add(authorKey);
       top.push(item);
     } else {
       console.log(`  ❌ @${item.authorHandle} (score:${detection.score}) — skipped [${detection.negativeMatches.join(",") || "no RE keywords"}]`);

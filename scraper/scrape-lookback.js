@@ -9,6 +9,8 @@ const { execSync } = require("child_process");
 const dotenv = require("dotenv");
 dotenv.config({ path: path.resolve(__dirname, ".env") });
 
+const { checkAgent } = require("./src/agent-check");
+
 const SERPAPI_KEY = process.env.SERPAPI_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const TEMP_DIR = path.resolve(__dirname, "output/temp");
@@ -86,7 +88,8 @@ async function getEngagement(url) {
   } catch { return null; }
 }
 
-function isAgent(profile, username) {
+function isAgentOld(profile, username) {
+  // DEPRECATED — kept for reference, now using checkAgent from agent-check.js
   const allText = ((profile?.bio || "") + " " + (profile?.fullName || "") + " " + (username || "")).toLowerCase();
   const reKW = ["realtor", "real estate", "realty", "broker", "keller williams",
     "coldwell banker", "re/max", "remax", "century 21", "compass", "exp realty",
@@ -105,6 +108,7 @@ async function lookbackCity(cityName, state, location, targetPosts = 5, maxDaysB
 
   const allPosts = [];
   const seenShortcodes = new Set();
+  const seenAuthors = new Set();
   let totalSearches = 0;
 
   for (let daysBack = 1; daysBack <= maxDaysBack; daysBack++) {
@@ -161,16 +165,28 @@ async function lookbackCity(cityName, state, location, targetPosts = 5, maxDaysB
       if (allPosts.length >= targetPosts) break;
 
       const eng = await getEngagement(r.url);
-      if (!eng || eng.likes < 5) { await new Promise(r => setTimeout(r, 300)); continue; }
+      if (!eng) { await new Promise(r => setTimeout(r, 300)); continue; }
 
-      // Check if agent
+      // Check if agent using tiered detection
       const profile = await fetchProfileCached(eng.author);
-      const agentCheck = profile ? isAgent(profile, eng.author) :
-        ["realtor", "realty", "real estate", "broker"].some(kw => (eng.author || "").toLowerCase().includes(kw));
+      const detection = checkAgent({
+        bio: profile?.bio || profile?.fullName || "",
+        fullName: profile?.fullName || "",
+        username: eng.author || "",
+        caption: eng.caption || r.title || "",
+      });
 
-      if (agentCheck) {
+      if (detection.isAgent) {
+        // Author dedup — 1 post per author
+        const authorKey = (eng.author || "").toLowerCase();
+        if (authorKey && seenAuthors.has(authorKey)) {
+          console.log(`    ⏭️  @${eng.author} | skipped (duplicate author)`);
+          await new Promise(r => setTimeout(r, 300));
+          continue;
+        }
         const virality = Math.round((eng.views / 20) + (eng.likes / 10) + (eng.comments || 0));
         console.log(`    ✅ @${eng.author} | 👾 ${virality} | ${eng.views} views | ${dateLabel}`);
+        seenAuthors.add(authorKey);
         allPosts.push({
           ...eng,
           title: r.title.replace(" | Instagram", "").replace(" on Instagram:", "").trim(),
@@ -179,7 +195,7 @@ async function lookbackCity(cityName, state, location, targetPosts = 5, maxDaysB
           daysOld: daysBack,
         });
       } else {
-        console.log(`    ❌ @${eng.author} | skipped`);
+        console.log(`    ❌ @${eng.author} | skipped (signals:[${detection.signals.join(",")}] neg:[${detection.negatives.join(",")}])`);
       }
       await new Promise(r => setTimeout(r, 2000));
     }
@@ -243,8 +259,18 @@ async function main() {
     const { posts, searchesUsed } = await lookbackCity(cityName, state, location, needed, 7);
     totalSearches += searchesUsed;
 
-    // Merge with existing yesterday posts
-    const merged = [...city.existing, ...posts];
+    // Merge with existing yesterday posts (dedup by shortcode + author)
+    const mergeSeenSC = new Set();
+    const mergeSeenAuth = new Set();
+    const merged = [...city.existing, ...posts].filter(p => {
+      const sc = p.shortcode;
+      const auth = (p.author || "").toLowerCase();
+      if (mergeSeenSC.has(sc)) return false;
+      if (auth && mergeSeenAuth.has(auth)) return false;
+      mergeSeenSC.add(sc);
+      if (auth) mergeSeenAuth.add(auth);
+      return true;
+    });
     merged.sort((a, b) => (b.viralityScore || 0) - (a.viralityScore || 0));
     yesterday[city.key] = merged.slice(0, 5);
   }

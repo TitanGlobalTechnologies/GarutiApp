@@ -34,25 +34,267 @@ const STRONG_KEYWORDS = [
   "licensed agent",
   "licensed realtor",
 
-  // Brokerage names (top US brokerages)
+  // ─────────────────────────────────────────────────────
+  // TIER 1: Major National Franchises (top 20+)
+  // ─────────────────────────────────────────────────────
+
+  // 1. Keller Williams Realty — #1 franchise by agent count (~160K agents)
   "keller williams",
+  "kellerwilliams",
+
+  // 2. Coldwell Banker — one of oldest brands (est. 1906)
   "coldwell banker",
+  "coldwellbanker",
+
+  // 3. RE/MAX — global franchise, 74K+ US agents
   "re/max",
   "remax",
   "re max",
+
+  // 4. Century 21
   "century 21",
   "century21",
-  "compass",
+
+  // 5. Compass — largest independent by volume ($231B)
+  "compass real estate",
+  "compass realty",
+  "@compass",
+
+  // 6. eXp Realty — largest cloud brokerage (85K+ agents)
   "exp realty",
-  "exp realty",
-  "sotheby",
+  "exprealty",
+  "expi",
+
+  // 7. Berkshire Hathaway HomeServices
   "berkshire hathaway",
   "bhhs",
-  "weichert",
+
+  // 8. ERA Real Estate (Anywhere brand)
+  "era real estate",
+  "era realty",
+
+  // 9. Sotheby's International Realty
+  "sotheby",
+  "sothebys",
+
+  // 10. The Corcoran Group (Anywhere brand)
+  "corcoran group",
+  "corcoran real estate",
+  "corcoran realty",
+
+  // 11. Better Homes and Gardens Real Estate (Anywhere brand)
+  "better homes and gardens real estate",
+  "bhg real estate",
+  "bhgre",
+
+  // 12. HomeServices of America (Berkshire Hathaway affiliate)
+  "homeservices of america",
+
+  // 13. Howard Hanna Real Estate
   "howard hanna",
+
+  // 14. Douglas Elliman
   "douglas elliman",
+  "elliman",
+
+  // 15. Weichert Realtors
+  "weichert",
+
+  // 16. The Real Brokerage / REAL Broker
+  "real brokerage",
+  "real broker",
+
+  // 17. Redfin
+  "redfin",
+
+  // 18. Realty ONE Group
+  "realty one group",
+  "realtyonegroup",
+
+  // 19. HomeSmart International
+  "homesmart",
+
+  // 20. EXIT Realty
+  "exit realty",
+  "exitrealty",
+
+  // 21. United Real Estate
+  "united real estate",
+
+  // 22. NextHome
+  "nexthome",
+  "next home realty",
+
+  // 23. Fathom Realty
+  "fathom realty",
+  "fathomrealty",
+
+  // 24. LPT Realty
+  "lpt realty",
+  "lptrealty",
+
+  // 25. Epique Realty
+  "epique realty",
+
+  // ─────────────────────────────────────────────────────
+  // TIER 2: Luxury / Boutique Brokerages
+  // ─────────────────────────────────────────────────────
+
+  // Christie's International Real Estate
+  "christie's international",
+  "christies real estate",
+  "christies international",
+
+  // Engel & Volkers
+  "engel & volkers",
+  "engel and volkers",
+  "engelvolkers",
+  "engel volkers",
+
+  // The Agency (luxury brokerage, LA-based)
+  "the agency re",
+  "theagencyre",
+
+  // Nest Seekers International
+  "nest seekers",
+  "nestseekers",
+
+  // Brown Harris Stevens (NYC luxury)
+  "brown harris stevens",
+  "brown harris",
+
+  // Corcoran (luxury arm, also Anywhere franchise)
+  "the corcoran group",
+
+  // Coldwell Banker Global Luxury (sub-brand)
+  "coldwell banker global luxury",
+  "cb global luxury",
+
+  // Stribling & Associates (now part of Compass)
+  "stribling",
+
+  // ONE Sotheby's International Realty (FL luxury)
+  "one sotheby",
+
+  // ─────────────────────────────────────────────────────
+  // TIER 3: Well-Known Regional Brokerages
+  // ─────────────────────────────────────────────────────
+
+  // Long & Foster (Mid-Atlantic, 7K+ agents)
+  "long & foster",
+  "long and foster",
+  "longandfoster",
+
+  // Baird & Warner (Chicago, est. 1855)
+  "baird & warner",
+  "baird and warner",
+
+  // Crye-Leike (Southeast — TN, AR, MS, GA)
+  "crye-leike",
+  "crye leike",
+  "cryeleike",
+
+  // Windermere Real Estate (Pacific Northwest)
+  "windermere real estate",
+  "windermere realty",
+
+  // Allen Tate (Carolinas)
+  "allen tate",
+
+  // Edina Realty (Minnesota / upper Midwest)
+  "edina realty",
+
+  // Ebby Halliday (Dallas/North Texas)
+  "ebby halliday",
+
+  // Houlihan Lawrence (Westchester / CT)
+  "houlihan lawrence",
+
+  // William Raveis (Northeast / New England)
+  "william raveis",
+  "raveis real estate",
+
+  // Harry Norman Realtors (Atlanta / Georgia)
+  "harry norman",
+
+  // @properties (Chicago)
+  "@properties",
+
+  // Latter & Blum (Louisiana / Gulf South)
+  "latter & blum",
+  "latter and blum",
+
+  // Watson Realty (Northeast Florida)
+  "watson realty",
+
+  // Samson Properties (Virginia / DC Metro)
+  "samson properties",
+
+  // Michael Saunders & Company (Southwest Florida)
+  "michael saunders",
+
+  // The Keyes Company (South Florida)
   "the keyes company",
-  "the agency",
+  "keyes company",
+
+  // John R. Wood Properties (Southwest Florida)
+  "john r. wood",
+  "john r wood",
+
+  // Premier Plus Realty (Southwest Florida)
+  "premier plus realty",
+
+  // Lamacchia Realty (Massachusetts)
+  "lamacchia realty",
+
+  // Higgins Group Real Estate (Connecticut)
+  "higgins group",
+
+  // Randall Realtors (New England)
+  "randall realtors",
+
+  // Jack Conway & Company (Massachusetts)
+  "jack conway",
+
+  // Alain Pinel Realtors (now Compass, but some agents still reference)
+  "alain pinel",
+
+  // Pacific Union (now Compass, but still referenced)
+  "pacific union",
+
+  // Pinnacle Estate Properties (LA/Ventura)
+  "pinnacle estate",
+
+  // Dilbeck Real Estate (Southern California)
+  "dilbeck real estate",
+
+  // Lyon Real Estate (Sacramento)
+  "lyon real estate",
+
+  // Citi Habitats (NYC, now part of Corcoran)
+  "citi habitats",
+
+  // Halstead (NYC, merged into Brown Harris Stevens)
+  "halstead real estate",
+  "halstead property",
+
+  // Triplemint (NYC, now part of REAL)
+  "triplemint",
+
+  // Side Real Estate (agent-branded platform)
+  "side real estate",
+
+  // PLACE Inc (agent platform / brokerage)
+  "place inc",
+
+  // Vylla Home (formerly Carrington)
+  "vylla home",
+
+  // Offerpad (iBuyer with brokerage arm)
+  "offerpad",
+
+  // Movoto (online brokerage)
+  "movoto",
 ];
 
 const MEDIUM_KEYWORDS = [

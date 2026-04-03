@@ -1,53 +1,43 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform } from "react-native";
-import { matchZipToCity } from "../src/data/swfl-zipcodes";
+import { View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView } from "react-native";
+import { SUPPORTED_CITIES } from "../src/data/swfl-zipcodes";
+
+// Representative zip per city (for localStorage backwards compat)
+const CITY_ZIPS: Record<string, string> = {
+  "Cape Coral": "33914",
+  "Fort Myers": "33901",
+  "Naples": "34102",
+  "Bonita Springs": "34134",
+  "Lehigh Acres": "33971",
+  "Punta Gorda": "33950",
+};
 
 interface ZipOnboardingProps {
   onComplete: (zip: string, city: string) => void;
 }
 
 export default function ZipOnboarding({ onComplete }: ZipOnboardingProps) {
-  const [zip, setZip] = useState("");
-  const [matchedCity, setMatchedCity] = useState("");
-  const [error, setError] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  function handleInput(val: string) {
-    const clean = val.replace(/[^0-9]/g, "").slice(0, 5);
-    setZip(clean);
-    setError("");
-    setMatchedCity("");
-
-    if (clean.length === 5) {
-      const city = matchZipToCity(clean);
-      if (city) {
-        setMatchedCity(city);
-      } else {
-        setError("We don't cover this area yet. Try a SW Florida zip code.\nCape Coral: 33914 | Fort Myers: 33901 | Naples: 34102");
-      }
-    }
+  function handleSelect(city: string) {
+    setSelectedCity(city);
+    setDropdownOpen(false);
   }
 
   function handleSubmit() {
-    if (zip.length !== 5) {
-      setError("Please enter a 5-digit zip code");
-      return;
-    }
-    const city = matchZipToCity(zip);
-    if (!city) {
-      setError("We don't cover this area yet. Try a SW Florida zip code.");
-      return;
-    }
+    if (!selectedCity) return;
+    const zip = CITY_ZIPS[selectedCity] || "33914";
 
-    // Save to localStorage for persistence
     if (Platform.OS === "web" && typeof window !== "undefined") {
       window.localStorage.setItem("lae_zipcode", zip);
-      window.localStorage.setItem("lae_city", city);
+      window.localStorage.setItem("lae_city", selectedCity);
     }
 
-    onComplete(zip, city);
+    onComplete(zip, selectedCity);
   }
 
-  const isReady = zip.length === 5 && matchedCity !== "";
+  const isReady = selectedCity !== "";
 
   return (
     <View style={styles.container}>
@@ -56,30 +46,45 @@ export default function ZipOnboarding({ onComplete }: ZipOnboardingProps) {
       </View>
       <Text style={styles.title}>Local Authority Engine</Text>
       <Text style={styles.subtitle}>
-        Find the most viral real estate content{"\n"}in your area. Enter your zip code to start.
+        Find the most viral real estate content{"\n"}in your area. Select your city to start.
       </Text>
 
       <View style={styles.form}>
-        <TextInput
-          style={[
-            styles.input,
-            isReady && styles.inputSuccess,
-            error ? styles.inputError : null,
-          ]}
-          value={zip}
-          onChangeText={handleInput}
-          placeholder="Zip code"
-          placeholderTextColor="#6B7280"
-          keyboardType="number-pad"
-          maxLength={5}
-          autoFocus
-        />
+        <View style={styles.dropdownWrapper}>
+          <TouchableOpacity
+            style={[styles.dropdownTrigger, isReady && styles.dropdownTriggerSelected]}
+            onPress={() => setDropdownOpen(!dropdownOpen)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.dropdownText, !selectedCity && styles.dropdownPlaceholder]}>
+              {selectedCity || "Choose your city"}
+            </Text>
+            <Text style={styles.dropdownArrow}>{dropdownOpen ? "\u25B2" : "\u25BC"}</Text>
+          </TouchableOpacity>
 
-        {matchedCity ? (
-          <Text style={styles.cityMatch}>📍 {matchedCity}, FL</Text>
-        ) : null}
+          {dropdownOpen && (
+            <View style={styles.dropdownList}>
+              <ScrollView nestedScrollEnabled style={styles.dropdownScroll}>
+                {SUPPORTED_CITIES.map((city) => (
+                  <TouchableOpacity
+                    key={city}
+                    style={[styles.dropdownItem, selectedCity === city && styles.dropdownItemActive]}
+                    onPress={() => handleSelect(city)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.dropdownItemText, selectedCity === city && styles.dropdownItemTextActive]}>
+                      {city}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+        </View>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {isReady && (
+          <Text style={styles.cityMatch}>{selectedCity}, FL</Text>
+        )}
 
         <TouchableOpacity
           style={[styles.button, isReady && styles.buttonActive]}
@@ -88,7 +93,7 @@ export default function ZipOnboarding({ onComplete }: ZipOnboardingProps) {
           activeOpacity={0.7}
         >
           <Text style={[styles.buttonText, isReady && styles.buttonTextActive]}>
-            {isReady ? `Start exploring ${matchedCity}` : "Enter zip code above"}
+            {isReady ? `Start exploring ${selectedCity}` : "Select a city above"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -125,33 +130,75 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   form: { width: "100%", maxWidth: 280 },
-  input: {
+  dropdownWrapper: {
+    position: "relative",
+    zIndex: 10,
+  },
+  dropdownTrigger: {
     width: "100%",
     padding: 16,
     borderRadius: 12,
     borderWidth: 2,
     borderColor: "rgba(255,255,255,0.08)",
     backgroundColor: "rgba(255,255,255,0.05)",
-    color: "#fff",
-    fontSize: 22,
-    textAlign: "center",
-    fontWeight: "700",
-    letterSpacing: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  inputSuccess: { borderColor: "#4ADE80" },
-  inputError: { borderColor: "#F87171" },
+  dropdownTriggerSelected: {
+    borderColor: "#4ADE80",
+  },
+  dropdownText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  dropdownPlaceholder: {
+    color: "#6B7280",
+    fontWeight: "500",
+  },
+  dropdownArrow: {
+    color: "#6B7280",
+    fontSize: 12,
+  },
+  dropdownList: {
+    position: "absolute",
+    top: "100%",
+    left: 0,
+    right: 0,
+    marginTop: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "#1A1A24",
+    overflow: "hidden",
+    zIndex: 20,
+  },
+  dropdownScroll: {
+    maxHeight: 240,
+  },
+  dropdownItem: {
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.05)",
+  },
+  dropdownItemActive: {
+    backgroundColor: "rgba(249,115,22,0.15)",
+  },
+  dropdownItemText: {
+    color: "#D1D5DB",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  dropdownItemTextActive: {
+    color: "#F97316",
+  },
   cityMatch: {
     color: "#4ADE80",
     fontSize: 14,
     fontWeight: "600",
     textAlign: "center",
     marginTop: 10,
-  },
-  error: {
-    color: "#F87171",
-    fontSize: 13,
-    textAlign: "center",
-    marginTop: 8,
   },
   button: {
     width: "100%",

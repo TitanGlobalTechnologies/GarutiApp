@@ -20,8 +20,23 @@ import { useUI } from "../../src/providers/UIProvider";
 import { useDigest } from "../../src/hooks/useDigest";
 import { useAdaptations } from "../../src/hooks/useAdaptations";
 import { getDigestForCity } from "../../src/data/live-digest";
+import { SUPPORTED_CITIES } from "../../src/data/swfl-zipcodes";
 import type { SupportedCity } from "../../src/data/swfl-zipcodes";
 import type { ContentPlatform } from "../../src/types/database";
+
+/** Cities ordered by proximity from each home city */
+const CITY_PROXIMITY: Record<string, string[]> = {
+  "Cape Coral": ["Cape Coral", "Fort Myers", "Lehigh Acres", "Punta Gorda", "Bonita Springs", "Naples"],
+  "Fort Myers": ["Fort Myers", "Cape Coral", "Lehigh Acres", "Bonita Springs", "Punta Gorda", "Naples"],
+  "Naples": ["Naples", "Bonita Springs", "Fort Myers", "Cape Coral", "Lehigh Acres", "Punta Gorda"],
+  "Bonita Springs": ["Bonita Springs", "Naples", "Fort Myers", "Cape Coral", "Lehigh Acres", "Punta Gorda"],
+  "Lehigh Acres": ["Lehigh Acres", "Fort Myers", "Cape Coral", "Bonita Springs", "Punta Gorda", "Naples"],
+  "Punta Gorda": ["Punta Gorda", "Cape Coral", "Fort Myers", "Lehigh Acres", "Bonita Springs", "Naples"],
+};
+
+function getNearbyCities(homeCity: string): string[] {
+  return CITY_PROXIMITY[homeCity] || [homeCity, ...SUPPORTED_CITIES.filter(c => c !== homeCity)];
+}
 
 function formatViews(n: number): string {
   if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
@@ -34,8 +49,7 @@ function formatDate(dateStr?: string): string {
   const d = dateStr.length === 10 ? new Date(dateStr + "T12:00:00") : new Date(dateStr);
   const now = new Date();
   const diff = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
-  if (diff <= 0) return "Today";
-  if (diff === 1) return "Yesterday";
+  if (diff <= 1) return "Yesterday";
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
@@ -149,27 +163,22 @@ export default function DigestScreen() {
   const [editableScript, setEditableScript] = useState("");
   const [isEditing, setIsEditing] = useState(false);
 
-  // Get Florida and USA content
-  const floridaContent = getDigestForCity("Florida");
-  const usaContent = getDigestForCity("USA");
+  // City carousel — nearby cities ordered by proximity
+  const nearbyCities = getNearbyCities(marketCity);
+  const [activeCityTab, setActiveCityTab] = useState(marketCity);
 
-  // Active content based on tab
-  const activeContent = activeTab === "city" ? content
-    : activeTab === "state" ? floridaContent.map(item => ({
-        url: item.url,
-        title: item.title,
-        caption: item.caption,
-        platform: "instagram" as const,
-        creatorHandle: item.authorHandle,
-        creatorName: item.authorHandle,
-        thumbnail: "",
-        views: item.views,
-        likes: item.likes,
-        comments: item.comments,
-        engagementRate: item.viralityScore,
-        discoveredAt: item.postDate || new Date().toISOString(),
-      }))
-    : usaContent.map(item => ({
+  function handleChangeCity() {
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      window.localStorage.removeItem("lae_zipcode");
+      window.localStorage.removeItem("lae_city");
+      window.location.reload();
+    }
+  }
+
+  // Get content for the selected city tab
+  const carouselCityContent = activeCityTab === marketCity
+    ? content
+    : getDigestForCity(activeCityTab as SupportedCity).map(item => ({
         url: item.url,
         title: item.title,
         caption: item.caption,
@@ -183,6 +192,32 @@ export default function DigestScreen() {
         engagementRate: item.viralityScore,
         discoveredAt: item.postDate || new Date().toISOString(),
       }));
+
+  // Get Florida and USA content
+  const floridaContent = getDigestForCity("Florida");
+  const usaContent = getDigestForCity("USA");
+
+  const mapDigestItem = (item: any) => ({
+    url: item.url,
+    title: item.title,
+    caption: item.caption,
+    platform: "instagram" as const,
+    creatorHandle: item.authorHandle,
+    creatorName: item.authorHandle,
+    thumbnail: "",
+    views: item.views,
+    likes: item.likes,
+    comments: item.comments,
+    engagementRate: item.viralityScore,
+    discoveredAt: item.postDate || new Date().toISOString(),
+  });
+
+  // Active content based on tab
+  const activeContent = activeTab === "city"
+    ? carouselCityContent
+    : activeTab === "state"
+    ? floridaContent.map(mapDigestItem)
+    : usaContent.map(mapDigestItem);
 
   // Always pass user's city for script lookup — state/nation scripts
   // are localized to the user's city (e.g., Texas post → Cape Coral script)
@@ -242,31 +277,51 @@ export default function DigestScreen() {
           <RefreshControl refreshing={loading} onRefresh={refresh} tintColor="#F97316" />
         }
       >
-        {/* City name */}
-        <Text style={styles.cityName}>{marketCity}, {marketState}</Text>
+        {/* Change city button */}
+        <TouchableOpacity style={styles.changeCityBtn} onPress={handleChangeCity} activeOpacity={0.7}>
+          <Ionicons name="swap-horizontal" size={14} color="rgba(255,255,255,0.45)" />
+          <Text style={styles.changeCityText}>Change city</Text>
+        </TouchableOpacity>
 
-        {/* Scope tabs */}
-        <View style={styles.tabRow}>
-          {([
-            { key: "nation" as ScopeTab, label: "USA" },
-            { key: "state" as ScopeTab, label: "Florida" },
-            { key: "city" as ScopeTab, label: marketCity },
-          ]).map((tab) => (
-            <TouchableOpacity
-              key={tab.key}
-              style={[styles.tab, activeTab === tab.key && styles.tabActive]}
-              onPress={() => {
-                setActiveTab(tab.key);
-                setSelectedUrl(null);
-                setShowScript(false);
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+        {/* Scope tabs — horizontally scrollable */}
+        <View style={styles.tabRowWrapper}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tabRowScroll}
+          >
+            {([
+              { key: "nation" as ScopeTab, label: "USA", city: null },
+              { key: "state" as ScopeTab, label: "Florida", city: null },
+              ...nearbyCities.map((c) => ({ key: "city" as ScopeTab, label: c, city: c })),
+            ]).map((tab, i) => {
+              const isActive = tab.city
+                ? activeTab === "city" && activeCityTab === tab.city
+                : activeTab === tab.key;
+              return (
+                <TouchableOpacity
+                  key={tab.city || tab.key}
+                  style={[styles.tab, isActive && styles.tabActive]}
+                  onPress={() => {
+                    setActiveTab(tab.key);
+                    if (tab.city) setActiveCityTab(tab.city);
+                    setSelectedUrl(null);
+                    setShowScript(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                    {tab.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+          {/* Fade hint on right edge */}
+          <View
+            style={[styles.tabFadeHint, Platform.OS === "web" ? { backgroundImage: "linear-gradient(to right, transparent, #0A0A0F)" } as any : { backgroundColor: "transparent" }]}
+            pointerEvents="none"
+          />
         </View>
 
         {/* Content — same rendering for all tabs */}
@@ -394,21 +449,36 @@ const styles = StyleSheet.create({
   scroll: { flex: 1, paddingHorizontal: 16 },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
 
-  // Header
-  cityName: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: "rgba(255,255,255,0.55)",
+  // Change city
+  changeCityBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 5,
     marginTop: 12,
-    marginBottom: 16,
-    letterSpacing: 0.3,
+    marginBottom: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+  },
+  changeCityText: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.45)",
+    fontWeight: "500",
   },
 
   // Tabs
-  tabRow: { flexDirection: "row", gap: 8, marginBottom: 20 },
+  tabRowWrapper: {
+    position: "relative",
+    marginBottom: 20,
+  },
+  tabRowScroll: {
+    flexDirection: "row",
+    gap: 8,
+    paddingRight: 24,
+  },
   tab: {
-    flex: 1,
     paddingVertical: 10,
+    paddingHorizontal: 18,
     borderRadius: 10,
     backgroundColor: "rgba(255,255,255,0.05)",
     alignItems: "center",
@@ -425,6 +495,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   tabTextActive: { color: "#fff" },
+  tabFadeHint: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 32,
+  },
 
   // Post cards
   postCard: {

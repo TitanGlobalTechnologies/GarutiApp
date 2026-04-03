@@ -79,7 +79,8 @@ const PAGES_PER_QUERY = 3; // 3 pages × 10 results = 30 per query
 async function searchPage(
   query: string,
   location: string,
-  start: number
+  start: number,
+  dateFilter?: string
 ): Promise<SerpResult[]> {
   const params = new URLSearchParams({
     api_key: config.serpApiKey,
@@ -88,7 +89,7 @@ async function searchPage(
     location: location,
     gl: "us",
     hl: "en",
-    tbs: "cdr:1,cd_min:01/01/2026,cd_max:12/31/2026", // 2026 only
+    tbs: dateFilter || "cdr:1,cd_min:01/01/2026,cd_max:12/31/2026",
     num: "10",
     start: String(start),
   });
