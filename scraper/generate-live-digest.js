@@ -33,10 +33,15 @@ function esc(str) {
     .replace(/"/g, '\\"');
 }
 
+function getDateStr(daysBack) {
+  const d = new Date();
+  d.setDate(d.getDate() - daysBack);
+  return d.toISOString().split("T")[0];
+}
+
 const MAX_AGE_DAYS = 7;
 const MAX_POSTS = 5;
 const MAX_POSTS_USA = 10;  // USA tab shows more — all fresh viral posts
-const MIN_VIRALITY = 5;    // Don't show posts with garbage engagement
 const now = new Date();
 
 /**
@@ -72,11 +77,12 @@ for (const [key, items] of Object.entries(data)) {
     if (author) seenAuth.add(author);
     return true;
   });
-  // SELECTION by freshness (yesterday fills first), DISPLAY by virality (highest first)
-  deduped.sort(freshFirstSort);                             // selection order
-  const selected = deduped.slice(0, MAX_POSTS);             // pick the freshest
-  selected.sort((a, b) => b.viralityScore - a.viralityScore); // display order
-  // Keep full pool for hierarchy building, but put selected first
+  // SELECTION by freshness (yesterday fills first)
+  deduped.sort(freshFirstSort);
+  // Pick the freshest, then re-sort by virality for DISPLAY
+  const selected = deduped.slice(0, MAX_POSTS);
+  selected.sort((a, b) => b.viralityScore - a.viralityScore);
+  // Full pool for hierarchy (freshFirstSort), selected first for output (virality)
   cleanByScope[city] = [...selected, ...deduped.slice(MAX_POSTS)];
 }
 
@@ -140,34 +146,16 @@ for (const p of [...flPool].sort((a, b) => b.viralityScore - a.viralityScore)) {
   if (auth) flSelectedAuth.add(auth);
   flExtras.push(p);
 }
+// Display by virality within base, extras after
+flBase.sort((a, b) => b.viralityScore - a.viralityScore);
 const floridaTop = [...flBase, ...flExtras];
-floridaTop.sort((a, b) => b.viralityScore - a.viralityScore);
 
-// USA tab: two-pass, prefer out-of-state posts (FL has its own tab)
-// Base 5: freshest, but try non-FL first to make USA different
-const nonFlPool = freshOnly.filter(p => !isFlScope(p));
-nonFlPool.sort(freshFirstSort);
-const usaNonFl = dedupTopN(nonFlPool, MAX_POSTS);
-// If non-FL doesn't fill 5, backfill from FL
-let usaBase;
-if (usaNonFl.length >= MAX_POSTS) {
-  usaBase = usaNonFl;
-} else {
-  const usaBackfillSC = new Set(usaNonFl.map(p => p.shortcode));
-  const usaBackfillAuth = new Set(usaNonFl.map(p => (p.author || p.authorHandle || "").toLowerCase()).filter(Boolean));
-  const flBackfill = [];
-  for (const p of [...flPool].sort(freshFirstSort)) {
-    if (usaNonFl.length + flBackfill.length >= MAX_POSTS) break;
-    if (usaBackfillSC.has(p.shortcode)) continue;
-    const auth = (p.author || p.authorHandle || "").toLowerCase();
-    if (auth && usaBackfillAuth.has(auth)) continue;
-    usaBackfillSC.add(p.shortcode);
-    if (auth) usaBackfillAuth.add(auth);
-    flBackfill.push(p);
-  }
-  usaBase = [...usaNonFl, ...flBackfill];
-}
-// Extras: 800+ from anywhere not already selected
+// USA tab: national leaderboard — top posts from ALL states
+// Select freshest first (yesterday fills slots), display by virality
+const usaPool = [...freshOnly].sort(freshFirstSort);
+const usaBase = dedupTopN(usaPool, MAX_POSTS);
+// Extras: 800+ from yesterday, not already in base
+const yesterday = getDateStr(1);
 const usaSelectedSC = new Set(usaBase.map(p => p.shortcode));
 const usaSelectedAuth = new Set(usaBase.map(p => (p.author || p.authorHandle || "").toLowerCase()).filter(Boolean));
 const usaExtras = [];
@@ -177,12 +165,15 @@ for (const p of [...freshOnly].sort((a, b) => b.viralityScore - a.viralityScore)
   const auth = (p.author || p.authorHandle || "").toLowerCase();
   if (auth && usaSelectedAuth.has(auth)) continue;
   if (p.viralityScore < EXTRA_MIN_SCORE) continue;
+  const pDate = p.date || p.postDate || "";
+  if (pDate !== yesterday) continue;
   usaSelectedSC.add(p.shortcode);
   if (auth) usaSelectedAuth.add(auth);
   usaExtras.push(p);
 }
+// Display by virality
+usaBase.sort((a, b) => b.viralityScore - a.viralityScore);
 const usaTop = [...usaBase, ...usaExtras];
-usaTop.sort((a, b) => b.viralityScore - a.viralityScore);
 
 // Override the Florida and USA entries
 cleanByScope["Florida"] = floridaTop;

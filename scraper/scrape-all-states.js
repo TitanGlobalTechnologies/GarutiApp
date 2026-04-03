@@ -87,45 +87,58 @@ const ALLOWED_CITIES = new Set([
   "clearwater", "tallahassee", "gainesville", "lakeland", "palm beach",
   "west palm beach", "boca raton", "fort lauderdale", "hollywood",
 ]);
-// Cities that mean "definitely not our area" — hard reject
-const REJECTED_LOCATIONS = [
-  "los angeles", "san francisco", "san diego", "seattle", "portland",
-  "chicago", "detroit", "denver", "phoenix", "las vegas", "boston",
-  "minneapolis", "salt lake", "honolulu", "anchorage",
-];
-
 /**
  * Check if a post's location is in our target area.
  * Returns: "ok" (allowed), "reject" (wrong area), "unknown" (no location data)
+ *
+ * STRICT for FL cities/state: must be from Florida or SWFL cities.
+ * RELAXED for nearby states: any US location is fine (they feed USA tab).
  */
 function checkLocation(eng, targetScope) {
   const locName = (eng.locationName || "").toLowerCase();
   const locCity = (eng.locationCity || "").toLowerCase();
   const caption = (eng.caption || "").toLowerCase();
+  const isFlScope = targetScope.includes("_FL") || targetScope === "Florida";
 
-  // Layer 1: Instagram location tag
+  // Layer 1: Instagram location tag — definitive if present
   if (locName || locCity) {
-    // Hard reject: known out-of-area cities
-    for (const bad of REJECTED_LOCATIONS) {
-      if (locName.includes(bad) || locCity.includes(bad)) return "reject";
+    const loc = locName + " " + locCity;
+
+    if (isFlScope) {
+      // STRICT: FL scopes must be from Florida
+      if (loc.includes("florida")) return "ok";
+      for (const city of ALLOWED_CITIES) {
+        if (loc.includes(city)) return "ok";
+      }
+      // Tagged but NOT in Florida — reject
+      return "reject";
+    } else {
+      // RELAXED: nearby state scopes — any US location is fine
+      // Just reject obviously non-US (Canada, etc.)
+      if (loc.includes("canada") || loc.includes("ontario") || loc.includes("british columbia") ||
+          loc.includes("alberta") || loc.includes("philippines") || loc.includes("uk") ||
+          loc.includes("england") || loc.includes("australia")) {
+        return "reject";
+      }
+      return "ok";
     }
-    // Check if location matches an allowed state or city
-    for (const state of ALLOWED_STATES) {
-      if (locName.includes(state)) return "ok";
-    }
-    for (const city of ALLOWED_CITIES) {
-      if (locName.includes(city) || locCity.includes(city)) return "ok";
-    }
-    // Tagged location exists but doesn't match our area — suspicious but allow
-    // (could be a suburb or neighborhood name we don't recognize)
   }
 
-  // Layer 2: Caption analysis — check for out-of-area signals
-  for (const bad of REJECTED_LOCATIONS) {
-    // Look for patterns like "#LosAngelesRealtor" or "Los Angeles real estate"
-    if (caption.includes(bad + " realtor") || caption.includes(bad + " real estate") ||
-        caption.includes(bad + "realtor") || caption.includes("#" + bad.replace(/ /g, ""))) {
-      return "reject";
+  // Layer 2: Caption analysis — only for FL scopes, check for non-FL signals
+  if (isFlScope) {
+    const badCaptionSignals = [
+      "los angeles", "san francisco", "san diego", "seattle", "portland",
+      "chicago", "detroit", "denver", "phoenix", "las vegas", "boston",
+      "houston", "dallas", "austin", "san antonio", "atlanta",
+      "columbus ohio", "sacramento", "tucson", "philadelphia",
+      "pittsburgh", "cleveland", "milwaukee", "indianapolis",
+    ];
+    for (const bad of badCaptionSignals) {
+      if (caption.includes(bad + " realtor") || caption.includes(bad + " real estate") ||
+          caption.includes("#" + bad.replace(/ /g, "") + "realtor") ||
+          caption.includes("#" + bad.replace(/ /g, "") + "realestate")) {
+        return "reject";
+      }
     }
   }
 
