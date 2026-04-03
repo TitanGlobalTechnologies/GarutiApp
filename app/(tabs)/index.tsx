@@ -1,7 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   ScrollView,
   RefreshControl,
@@ -12,7 +13,14 @@ import {
   Linking,
   Animated,
   Pressable,
+  LayoutAnimation,
+  UIManager,
 } from "react-native";
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { Ionicons } from "@expo/vector-icons";
 import SafeArea from "../../components/SafeArea";
 import { useAuthContext } from "../../src/providers/AuthProvider";
@@ -70,6 +78,10 @@ const PLATFORM_ICON_MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   reddit: "logo-reddit",
 };
 
+/** Instagram SVG icon as data URI — renders reliably on web without icon fonts */
+const IG_ICON_SVG = (color: string) =>
+  `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${color}"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>`)}`;
+
 /** Small platform icon button that opens the original post URL */
 function PlatformLinkButton({
   platform,
@@ -80,10 +92,41 @@ function PlatformLinkButton({
   url: string;
   selected: boolean;
 }) {
-  const iconName = PLATFORM_ICON_MAP[platform] || "link-outline";
   const iconColor = selected
-    ? "rgba(255,255,255,0.50)"
-    : "rgba(255,255,255,0.28)";
+    ? "#E1306C"
+    : "rgba(255,255,255,0.7)";
+
+  // Explicit window.open — bypasses service worker, Pressable touch interference, and popup reuse
+  if (Platform.OS === "web") {
+    return (
+      <View
+        style={styles.platformBtn}
+        accessibilityLabel={`Open on ${platform}`}
+        accessibilityRole="link"
+      >
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e: any) => {
+            e.preventDefault();
+            e.stopPropagation();
+            window.open(url, '_blank', 'noopener,noreferrer');
+          }}
+          onTouchEnd={(e: any) => e.stopPropagation()}
+          onTouchStart={(e: any) => e.stopPropagation()}
+          onMouseDown={(e: any) => e.stopPropagation()}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+        >
+          <Image
+            source={{ uri: IG_ICON_SVG(iconColor) }}
+            style={{ width: 22, height: 22 }}
+            resizeMode="contain"
+          />
+        </a>
+      </View>
+    );
+  }
 
   return (
     <TouchableOpacity
@@ -97,7 +140,11 @@ function PlatformLinkButton({
       accessibilityLabel={`Open on ${platform}`}
       accessibilityRole="link"
     >
-      <Ionicons name={iconName as any} size={18} color={iconColor} />
+      <Image
+        source={{ uri: IG_ICON_SVG(iconColor) }}
+        style={{ width: 22, height: 22 }}
+        resizeMode="contain"
+      />
     </TouchableOpacity>
   );
 }
@@ -175,28 +222,6 @@ export default function DigestScreen() {
     }
   }
 
-  // Get content for the selected city tab
-  const carouselCityContent = activeCityTab === marketCity
-    ? content
-    : getDigestForCity(activeCityTab as SupportedCity).map(item => ({
-        url: item.url,
-        title: item.title,
-        caption: item.caption,
-        platform: "instagram" as const,
-        creatorHandle: item.authorHandle,
-        creatorName: item.authorHandle,
-        thumbnail: "",
-        views: item.views,
-        likes: item.likes,
-        comments: item.comments,
-        engagementRate: item.viralityScore,
-        discoveredAt: item.postDate || new Date().toISOString(),
-      }));
-
-  // Get Florida and USA content
-  const floridaContent = getDigestForCity("Florida");
-  const usaContent = getDigestForCity("USA");
-
   const mapDigestItem = (item: any) => ({
     url: item.url,
     title: item.title,
@@ -209,15 +234,51 @@ export default function DigestScreen() {
     likes: item.likes,
     comments: item.comments,
     engagementRate: item.viralityScore,
-    discoveredAt: item.postDate || new Date().toISOString(),
+    discoveredAt: item.postDate || new Date().toISOString().split("T")[0],
   });
 
-  // Active content based on tab
-  const activeContent = activeTab === "city"
-    ? carouselCityContent
-    : activeTab === "state"
-    ? floridaContent.map(mapDigestItem)
-    : usaContent.map(mapDigestItem);
+  // Build content for each scope level
+  const cityContent = activeCityTab === marketCity
+    ? content
+    : getDigestForCity(activeCityTab as SupportedCity).map(mapDigestItem);
+  const floridaContent = getDigestForCity("Florida").map(mapDigestItem);
+  const usaContent = getDigestForCity("USA").map(mapDigestItem);
+
+  // Active content based on tab — with LayoutAnimation for smooth transitions
+  const activeContent = useMemo(() => {
+    return activeTab === "city"
+      ? cityContent
+      : activeTab === "state"
+      ? floridaContent
+      : usaContent;
+  }, [activeTab, activeCityTab, cityContent, floridaContent, usaContent]);
+
+  // ── Tab scroll-into-view: smooth center on tap ──
+  const tabScrollRef = useRef<ScrollView>(null);
+  const tabLayouts = useRef<Record<number, { x: number; width: number }>>({});
+  const tabBarWidth = useRef(390); // measured from the actual container
+
+  const scrollTabIntoView = (index: number) => {
+    const layout = tabLayouts.current[index];
+    if (!layout || !tabScrollRef.current) return;
+    // Center the tab in the visible container
+    const scrollX = layout.x - (tabBarWidth.current / 2) + (layout.width / 2);
+    tabScrollRef.current.scrollTo({ x: Math.max(0, scrollX), animated: true });
+  };
+
+  // Track previous tab to determine animation direction (expanding vs contracting)
+  const prevTabRef = useRef<ScopeTab>(activeTab);
+  useEffect(() => {
+    if (prevTabRef.current !== activeTab) {
+      LayoutAnimation.configureNext({
+        duration: 350,
+        create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+        update: { type: LayoutAnimation.Types.easeInEaseOut },
+        delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+      });
+      prevTabRef.current = activeTab;
+    }
+  }, [activeTab]);
 
   // Always pass user's city for script lookup — state/nation scripts
   // are localized to the user's city (e.g., Texas post → Cape Coral script)
@@ -286,9 +347,11 @@ export default function DigestScreen() {
         {/* Scope tabs — horizontally scrollable */}
         <View style={styles.tabRowWrapper}>
           <ScrollView
+            ref={tabScrollRef}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.tabRowScroll}
+            onLayout={(e) => { tabBarWidth.current = e.nativeEvent.layout.width; }}
           >
             {([
               { key: "nation" as ScopeTab, label: "USA", city: null },
@@ -302,7 +365,17 @@ export default function DigestScreen() {
                 <TouchableOpacity
                   key={tab.city || tab.key}
                   style={[styles.tab, isActive && styles.tabActive]}
+                  onLayout={(e) => {
+                    tabLayouts.current[i] = { x: e.nativeEvent.layout.x, width: e.nativeEvent.layout.width };
+                  }}
                   onPress={() => {
+                    scrollTabIntoView(i);
+                    LayoutAnimation.configureNext({
+                      duration: 350,
+                      create: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+                      update: { type: LayoutAnimation.Types.easeInEaseOut },
+                      delete: { type: LayoutAnimation.Types.easeInEaseOut, property: LayoutAnimation.Properties.opacity },
+                    });
                     setActiveTab(tab.key);
                     if (tab.city) setActiveCityTab(tab.city);
                     setSelectedUrl(null);
@@ -327,11 +400,11 @@ export default function DigestScreen() {
         {/* Content — same rendering for all tabs */}
         {activeContent.length > 0 && (
           <>
-            {activeContent.map((item) => {
+            {activeContent.map((item, idx) => {
               const isSelected = selectedUrl === item.url;
               return (
                 <PressableCard
-                  key={item.url}
+                  key={`${activeTab}-${activeCityTab}-${item.url}`}
                   onPress={() => handleSelectReel(item.url)}
                   selected={isSelected}
                 >
@@ -351,7 +424,7 @@ export default function DigestScreen() {
                   {/* Row 2: @handle + views (left) · platform icon (right) */}
                   <View style={styles.postBottom}>
                     <View style={styles.postMeta}>
-                      <Text style={styles.postAuthor}>@{item.creatorHandle}</Text>
+                      <Text style={styles.postAuthor} numberOfLines={1}>@{(item.creatorHandle || "").slice(0, 16)}</Text>
                       <Text style={styles.postDot}>·</Text>
                       <Text style={styles.postViews}>
                         {formatViews(item.views || item.likes)} {item.views ? "views" : "likes"}
@@ -565,7 +638,7 @@ const styles = StyleSheet.create({
     gap: 6,
     flex: 1,
   },
-  postAuthor: { fontSize: 12, color: "rgba(255,255,255,0.45)", fontWeight: "500" },
+  postAuthor: { fontSize: 12, color: "rgba(255,255,255,0.45)", fontWeight: "500", maxWidth: 120 },
   postDot: { fontSize: 12, color: "rgba(255,255,255,0.2)" },
   postViews: { fontSize: 12, color: "rgba(255,255,255,0.35)" },
   postDate: { fontSize: 12, color: "rgba(255,255,255,0.3)", fontStyle: "italic" as const },

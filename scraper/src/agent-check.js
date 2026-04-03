@@ -126,13 +126,27 @@ const NEGATIVE_PHRASES = [
   "marketing for agents",
   "academy",
   "where agents hang out",
+  // Ads / services targeting agents (not agents themselves)
+  "be featured",
+  "we feature your",
+  "feature your listing",
+  "get your listing featured",
+  "promote your listing",
+  "we promote your",
+  "advertise your",
+  "dm us to be featured",
+  "dm to be featured",
+  "tag us to be featured",
 ];
 
 // Single-word negatives (reject if present AND no Tier 1 brokerage/license match)
 const NEGATIVE_KEYWORDS = [
   "mortgage",
+  "mortgages",
   "lender",
+  "lending",
   "loan officer",
+  "loan originator",
   "photographer",
   "stager",
   "interior design",
@@ -160,6 +174,15 @@ function checkAgent(params) {
 
   const signals = [];
   const negatives = [];
+  const usernameLower = username.toLowerCase();
+
+  // ── Step 0: Username hard rejects — if the account NAME contains these, never an agent ──
+  const USERNAME_REJECTS = ["mortgage", "lending", "lender", "loan", "title company", "escrow", "inspector", "apprais"];
+  for (const term of USERNAME_REJECTS) {
+    if (usernameLower.includes(term)) {
+      return { isAgent: false, tier: 0, signals, negatives: [`username:${term}`] };
+    }
+  }
 
   // ── Step 1: Check negative override phrases (these disqualify immediately) ──
   for (const phrase of NEGATIVE_PHRASES) {

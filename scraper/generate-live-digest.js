@@ -14,6 +14,15 @@ const cityMap = {
   "USA": "USA",
 };
 
+const SWFL_CITIES = ["Cape Coral", "Fort Myers", "Naples", "Bonita Springs", "Lehigh Acres", "Punta Gorda"];
+
+// Only these scopes get written to TypeScript — state scopes (Georgia, etc.)
+// feed the hierarchy pools but don't become tabs in the app
+const OUTPUT_SCOPES = new Set([
+  "Cape Coral", "Fort Myers", "Naples", "Bonita Springs",
+  "Lehigh Acres", "Punta Gorda", "Florida", "USA",
+]);
+
 function esc(str) {
   return (str || "")
     .replace(/\\/g, "\\\\")
@@ -24,10 +33,173 @@ function esc(str) {
     .replace(/"/g, '\\"');
 }
 
+const MAX_AGE_DAYS = 7;
+const MAX_POSTS = 5;
+const MAX_POSTS_USA = 10;  // USA tab shows more — all fresh viral posts
+const MIN_VIRALITY = 5;    // Don't show posts with garbage engagement
+const now = new Date();
+
+/**
+ * FRESHNESS > VIRALITY. Always.
+ * Sort by date (newest first), then by virality within the same date.
+ * A 100-virality post from yesterday beats a 10,000-virality post from 3 days ago.
+ */
+function freshFirstSort(a, b) {
+  const dateA = a.date || a.postDate || "1970-01-01";
+  const dateB = b.date || b.postDate || "1970-01-01";
+  if (dateA !== dateB) return dateB.localeCompare(dateA); // newest date wins
+  return b.viralityScore - a.viralityScore; // within same date, highest virality wins
+}
+
+// ── Step 1: Clean all posts per scope (dedup + freshness) ──
+const cleanByScope = {};
+for (const [key, items] of Object.entries(data)) {
+  const city = cityMap[key] || key;
+  const fresh = items.filter(item => {
+    const dateStr = item.date || item.postDate;
+    if (!dateStr) return true;
+    const d = new Date(dateStr);
+    return (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24) <= MAX_AGE_DAYS;
+  });
+  const seenSC = new Set();
+  const seenAuth = new Set();
+  const deduped = fresh.filter(item => {
+    const sc = item.shortcode;
+    const author = (item.author || item.authorHandle || "").toLowerCase();
+    if (seenSC.has(sc)) return false;
+    if (author && seenAuth.has(author)) return false;
+    seenSC.add(sc);
+    if (author) seenAuth.add(author);
+    return true;
+  });
+  // SELECTION by freshness (yesterday fills first), DISPLAY by virality (highest first)
+  deduped.sort(freshFirstSort);                             // selection order
+  const selected = deduped.slice(0, MAX_POSTS);             // pick the freshest
+  selected.sort((a, b) => b.viralityScore - a.viralityScore); // display order
+  // Keep full pool for hierarchy building, but put selected first
+  cleanByScope[city] = [...selected, ...deduped.slice(MAX_POSTS)];
+}
+
+// ── Step 2: Build hierarchy ──
+// Collect ALL posts from every scope into a flat pool
+const allPosts = [];
+for (const [city, posts] of Object.entries(cleanByScope)) {
+  for (const p of posts) {
+    allPosts.push({ ...p, _scope: city });
+  }
+}
+
+function dedupTopN(posts, n) {
+  const seenSC = new Set();
+  const seenAuth = new Set();
+  const result = [];
+  for (const p of posts) {
+    if (result.length >= n) break;
+    const sc = p.shortcode;
+    const author = (p.author || p.authorHandle || "").toLowerCase();
+    if (seenSC.has(sc)) continue;
+    if (author && seenAuth.has(author)) continue;
+    seenSC.add(sc);
+    if (author) seenAuth.add(author);
+    result.push(p);
+  }
+  return result;
+}
+
+// For FL/USA hierarchy tabs: match the scraper's 7-day lookback window
+// The scraper already prioritizes yesterday-first, so anything it found is valid
+const HIERARCHY_MAX_AGE = 7;
+const freshOnly = allPosts.filter(p => {
+  const dateStr = p.date || p.postDate;
+  if (!dateStr) return false; // no date = don't include in hierarchy
+  const d = new Date(dateStr);
+  return (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24) <= HIERARCHY_MAX_AGE;
+});
+// ── Priority: Cities > Florida > USA ──
+// Smaller areas get first dibs on their best posts
+
+const EXTRA_MIN_SCORE = 800;
+const isFlScope = (p) => p._scope === "Florida" || SWFL_CITIES.includes(p._scope);
+
+// FLORIDA tab: two-pass (same pattern as USA)
+// Base 5: freshest FL+city posts
+const flPool = freshOnly.filter(isFlScope);
+flPool.sort(freshFirstSort);
+const flBase = dedupTopN(flPool, MAX_POSTS);
+// Extras: any FL post with 800+ virality not already in base
+const flSelectedSC = new Set(flBase.map(p => p.shortcode));
+const flSelectedAuth = new Set(flBase.map(p => (p.author || p.authorHandle || "").toLowerCase()).filter(Boolean));
+const flExtras = [];
+for (const p of [...flPool].sort((a, b) => b.viralityScore - a.viralityScore)) {
+  if (flExtras.length >= 5) break;
+  if (flSelectedSC.has(p.shortcode)) continue;
+  const auth = (p.author || p.authorHandle || "").toLowerCase();
+  if (auth && flSelectedAuth.has(auth)) continue;
+  if (p.viralityScore < EXTRA_MIN_SCORE) continue;
+  flSelectedSC.add(p.shortcode);
+  if (auth) flSelectedAuth.add(auth);
+  flExtras.push(p);
+}
+const floridaTop = [...flBase, ...flExtras];
+floridaTop.sort((a, b) => b.viralityScore - a.viralityScore);
+
+// USA tab: two-pass, prefer out-of-state posts (FL has its own tab)
+// Base 5: freshest, but try non-FL first to make USA different
+const nonFlPool = freshOnly.filter(p => !isFlScope(p));
+nonFlPool.sort(freshFirstSort);
+const usaNonFl = dedupTopN(nonFlPool, MAX_POSTS);
+// If non-FL doesn't fill 5, backfill from FL
+let usaBase;
+if (usaNonFl.length >= MAX_POSTS) {
+  usaBase = usaNonFl;
+} else {
+  const usaBackfillSC = new Set(usaNonFl.map(p => p.shortcode));
+  const usaBackfillAuth = new Set(usaNonFl.map(p => (p.author || p.authorHandle || "").toLowerCase()).filter(Boolean));
+  const flBackfill = [];
+  for (const p of [...flPool].sort(freshFirstSort)) {
+    if (usaNonFl.length + flBackfill.length >= MAX_POSTS) break;
+    if (usaBackfillSC.has(p.shortcode)) continue;
+    const auth = (p.author || p.authorHandle || "").toLowerCase();
+    if (auth && usaBackfillAuth.has(auth)) continue;
+    usaBackfillSC.add(p.shortcode);
+    if (auth) usaBackfillAuth.add(auth);
+    flBackfill.push(p);
+  }
+  usaBase = [...usaNonFl, ...flBackfill];
+}
+// Extras: 800+ from anywhere not already selected
+const usaSelectedSC = new Set(usaBase.map(p => p.shortcode));
+const usaSelectedAuth = new Set(usaBase.map(p => (p.author || p.authorHandle || "").toLowerCase()).filter(Boolean));
+const usaExtras = [];
+for (const p of [...freshOnly].sort((a, b) => b.viralityScore - a.viralityScore)) {
+  if (usaExtras.length >= MAX_POSTS_USA - MAX_POSTS) break;
+  if (usaSelectedSC.has(p.shortcode)) continue;
+  const auth = (p.author || p.authorHandle || "").toLowerCase();
+  if (auth && usaSelectedAuth.has(auth)) continue;
+  if (p.viralityScore < EXTRA_MIN_SCORE) continue;
+  usaSelectedSC.add(p.shortcode);
+  if (auth) usaSelectedAuth.add(auth);
+  usaExtras.push(p);
+}
+const usaTop = [...usaBase, ...usaExtras];
+usaTop.sort((a, b) => b.viralityScore - a.viralityScore);
+
+// Override the Florida and USA entries
+cleanByScope["Florida"] = floridaTop;
+cleanByScope["USA"] = usaTop;
+
+console.log("Hierarchy built:");
+console.log("  USA: " + usaTop.map(p => "👾" + p.viralityScore + " @" + (p.author || p.authorHandle) + " [" + p._scope + "]").join(", "));
+console.log("  FL:  " + floridaTop.map(p => "👾" + p.viralityScore + " @" + (p.author || p.authorHandle) + " [" + p._scope + "]").join(", "));
+
+// ── Step 3: Generate TypeScript ──
 let out = `/**
  * Live digest data for all SWFL cities
  * Real scraped content with verified Instagram engagement
- * Generated: ${new Date().toISOString().split("T")[0]}
+ * Generated: ${now.toISOString().split("T")[0]}
+ *
+ * Hierarchy: USA = top 10 freshest from all, Florida = top 5 freshest from FL+cities
+ * FRESHNESS > VIRALITY: yesterday's posts always beat older ones
  */
 
 import type { DiscoveredContent } from "../lib/content-pipeline";
@@ -50,45 +222,14 @@ export type SupportedCity = "Cape Coral" | "Fort Myers" | "Naples" | "Bonita Spr
 
 export const CITY_DIGESTS: Record<SupportedCity, LiveDigestItem[]> = {\n`;
 
-const MAX_AGE_DAYS = 7;
-const MAX_POSTS = 5;
-const now = new Date();
-
-for (const [key, items] of Object.entries(data)) {
-  const city = cityMap[key] || key;
-
-  // --- Safety net: filter stale posts (max 7 days old) ---
-  const fresh = items.filter(item => {
-    const dateStr = item.date || item.postDate;
-    if (!dateStr) return true; // no date = keep (legacy data)
-    const d = new Date(dateStr);
-    const ageDays = (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24);
-    return ageDays <= MAX_AGE_DAYS;
-  });
-
-  // --- Safety net: dedup by shortcode + author (1 post per author) ---
-  const seenShortcodes = new Set();
-  const seenAuthors = new Set();
-  const deduped = fresh.filter(item => {
-    const sc = item.shortcode;
-    const author = (item.author || item.authorHandle || "").toLowerCase();
-    if (seenShortcodes.has(sc)) return false;
-    if (author && seenAuthors.has(author)) return false;
-    seenShortcodes.add(sc);
-    if (author) seenAuthors.add(author);
-    return true;
-  });
-
-  // Cap at top 5
-  const final = deduped.slice(0, MAX_POSTS);
-
-  const dropped = items.length - final.length;
-  if (dropped > 0) {
-    console.log(`  ${city}: ${items.length} → ${final.length} posts (dropped ${dropped}: stale/duplicate)`);
-  }
-
+for (const [city, items] of Object.entries(cleanByScope)) {
+  // Skip state scopes (Georgia, Texas, etc.) — they feed hierarchy only
+  if (!OUTPUT_SCOPES.has(city)) continue;
+  // Cap per-city tabs at 5, USA at 10 (already capped by hierarchy)
+  const maxForScope = (city === "USA") ? MAX_POSTS_USA : MAX_POSTS;
+  const outputItems = items.slice(0, maxForScope);
   out += `  "${city}": [\n`;
-  for (const item of final) {
+  for (const item of outputItems) {
     out += `    {\n`;
     out += `      shortcode: "${item.shortcode}",\n`;
     out += `      url: "${item.url}",\n`;
@@ -104,10 +245,9 @@ for (const [key, items] of Object.entries(data)) {
 
     // For Florida/USA entries, embed localized scripts per city
     if (city === "Florida" || city === "USA") {
-      const cities = ["Cape Coral", "Fort Myers", "Naples", "Bonita Springs", "Lehigh Acres", "Punta Gorda"];
       out += `      localizedScripts: {\n`;
-      for (const c of cities) {
-        const cacheKey = `${item.shortcode}_${c.replace(/\\s/g, "_")}`;
+      for (const c of SWFL_CITIES) {
+        const cacheKey = `${item.shortcode}_${c.replace(/\s/g, "_")}`;
         const cachePath = path.join(__dirname, "output/script_cache", `${cacheKey}.txt`);
         let locScript = "";
         try { locScript = fs.readFileSync(cachePath, "utf-8"); } catch {}
@@ -147,4 +287,4 @@ export function getLiveDigestContent(city: SupportedCity = "Cape Coral"): Discov
 
 const outPath = path.join(__dirname, "../src/data/live-digest.ts");
 fs.writeFileSync(outPath, out);
-console.log("Generated live-digest.ts with " + Object.keys(data).length + " cities, " + Object.values(data).reduce((s, a) => s + a.length, 0) + " total input posts");
+console.log("Generated live-digest.ts with " + Object.keys(cleanByScope).length + " scopes");
