@@ -41,11 +41,20 @@ if (!SERPAPI_KEY) {
   process.exit(1);
 }
 
-// ── Three query variants ──
-const QUERIES = [
+// ── Query variants ──
+// Group 1: Agent-keyword queries (finds agents who identify as realtors)
+// Group 2: Location-property queries (finds property tours by agents who don't use RE keywords)
+const QUERIES_AGENT = [
   'site:instagram.com/reel intext:"realtor" real estate',
   'site:instagram.com/reel intext:"realty" real estate',
   'site:instagram.com/reel intext:"real estate" homes for sale',
+];
+
+// Location queries use {city} placeholder — replaced per target
+const QUERIES_LOCATION = [
+  'site:instagram.com/reel "{city}" homes for sale',
+  'site:instagram.com/reel "{city}" property listing',
+  'site:instagram.com/reel "{city}" luxury home tour',
 ];
 
 const SWFL_CITIES = ["Cape Coral", "Fort Myers", "Naples", "Bonita Springs", "Lehigh Acres", "Punta Gorda"];
@@ -72,7 +81,7 @@ const ALL_TARGETS = [
 ];
 
 // Minimum verified agents per scope before stopping lookback
-const MIN_AGENTS = { city: 5, state: 5, nearby: 1 };
+const MIN_AGENTS = { city: 10, state: 10, nearby: 3 };
 
 // ── Location filter: reject posts clearly from outside the target area ──
 // States we search — posts tagged in these states are allowed
@@ -194,48 +203,48 @@ let serpApiUsed = 0;
 
 async function serpSearch(query, location, dateFrom, dateTo) {
   const tbs = `cdr:1,cd_min:${toTbsDate(dateFrom)},cd_max:${toTbsDate(dateTo)}`;
-  const params = new URLSearchParams({
-    api_key: SERPAPI_KEY,
-    engine: "google",
-    q: query,
-    location: location,
-    gl: "us",
-    hl: "en",
-    tbs: tbs,
-    num: "100",
-  });
-
-  const res = await fetch(`https://serpapi.com/search.json?${params}`);
-  serpApiUsed++;
-
-  if (!res.ok) {
-    const err = await res.text();
-    console.log(`       [serpapi] Error ${res.status}: ${err.slice(0, 100)}`);
-    return [];
-  }
-
-  const data = await res.json();
-  if (data.error) {
-    console.log(`       [serpapi] ${data.error}`);
-    return [];
-  }
-
-  // Extract Instagram reel URLs
   const results = [];
   const seen = new Set();
-  for (const item of (data.organic_results || [])) {
-    const url = item.link || "";
-    if (!url.includes("instagram.com/reel/") && !url.includes("instagram.com/p/")) continue;
-    const m = url.match(/(?:reel|p)\/([A-Za-z0-9_-]+)/);
-    if (!m) continue;
-    if (seen.has(m[1])) continue;
-    seen.add(m[1]);
-    results.push({
-      shortcode: m[1],
-      url: url,
-      title: (item.title || "").replace(" | Instagram", "").replace(" on Instagram:", "").trim(),
-      snippet: item.snippet || "",
+
+  // 3 pages of 100 = up to 300 results per query
+  for (const start of [0, 100, 200]) {
+    const params = new URLSearchParams({
+      api_key: SERPAPI_KEY,
+      engine: "google",
+      q: query,
+      location: location,
+      gl: "us",
+      hl: "en",
+      tbs: tbs,
+      num: "100",
+      start: String(start),
     });
+
+    const res = await fetch(`https://serpapi.com/search.json?${params}`);
+    serpApiUsed++;
+
+    if (!res.ok) break;
+    const data = await res.json();
+    if (data.error) break;
+
+    let pageNew = 0;
+    for (const item of (data.organic_results || [])) {
+      const url = item.link || "";
+      if (!url.includes("instagram.com/reel/") && !url.includes("instagram.com/p/")) continue;
+      const m = url.match(/(?:reel|p)\/([A-Za-z0-9_-]+)/);
+      if (!m || seen.has(m[1])) continue;
+      seen.add(m[1]);
+      results.push({
+        shortcode: m[1], url,
+        title: (item.title || "").replace(" | Instagram", "").replace(" on Instagram:", "").trim(),
+        snippet: item.snippet || "",
+      });
+      pageNew++;
+    }
+
+    // Stop paginating if no new results on this page
+    if (pageNew === 0) break;
+    await sleep(500);
   }
   return results;
 }
@@ -545,12 +554,19 @@ async function main() {
       const dateTo = getDateStr(dayBack - 1);
       const dayLabel = dayBack === 1 ? "yesterday" : `${dayBack}d ago`;
 
-      console.log(`     \uD83D\uDCC5 ${dateFrom} (${dayLabel}) \u2014 3 queries x 100 results`);
+      // Build queries: agent keywords + location-specific for city scopes
+      const cityName = scope.replace("_FL", "").replace(/_/g, " ");
+      const locationQueries = (type === "city")
+        ? QUERIES_LOCATION.map(q => q.replace("{city}", cityName))
+        : [];
+      const allQueries = [...QUERIES_AGENT, ...locationQueries];
 
-      // Run all 3 queries for this day
+      console.log(`     \uD83D\uDCC5 ${dateFrom} (${dayLabel}) \u2014 ${allQueries.length} queries`);
+
+      // Run all queries for this day
       const dayReels = [];
-      for (let qi = 0; qi < QUERIES.length; qi++) {
-        const q = QUERIES[qi];
+      for (let qi = 0; qi < allQueries.length; qi++) {
+        const q = allQueries[qi];
         console.log(`       Q${qi + 1}: ${q.replace('site:instagram.com/reel ', '')}`);
         const results = await serpSearch(q, location, dateFrom, dateTo);
 

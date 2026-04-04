@@ -52,13 +52,20 @@ function formatViews(n: number): string {
   return String(n);
 }
 
-function formatDate(dateStr?: string): string {
-  if (!dateStr) return "";
-  const d = dateStr.length === 10 ? new Date(dateStr + "T12:00:00") : new Date(dateStr);
+function formatDate(dateStr?: string): { label: string; fresh: boolean } {
+  if (!dateStr) return { label: "", fresh: false };
+  // Compare dates only (no time), using local midnight
   const now = new Date();
-  const diff = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
-  if (diff <= 1) return "Yesterday";
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const todayStr = now.toISOString().split("T")[0];
+  const yesterdayDate = new Date(now);
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterdayStr = yesterdayDate.toISOString().split("T")[0];
+  const postDate = dateStr.slice(0, 10);
+
+  if (postDate === todayStr) return { label: "Today", fresh: true };
+  if (postDate === yesterdayStr) return { label: "Yesterday", fresh: true };
+  const d = new Date(postDate + "T12:00:00");
+  return { label: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }), fresh: false };
 }
 
 function formatScore(n: number): string {
@@ -96,8 +103,11 @@ function PlatformLinkButton({
     ? "#E1306C"
     : "rgba(255,255,255,0.7)";
 
-  // Explicit window.open — bypasses service worker, Pressable touch interference, and popup reuse
+  // Plain <a> tag with ?igsh=1 to bypass iOS Universal Links
+  // Without this param, iOS opens Instagram app which redirects to feed/wrong reel
+  // With ?igsh=1, it opens in the browser and shows the correct post
   if (Platform.OS === "web") {
+    const safeUrl = url.includes("?") ? url + "&igsh=1" : url + "?igsh=1";
     return (
       <View
         style={styles.platformBtn}
@@ -105,17 +115,13 @@ function PlatformLinkButton({
         accessibilityRole="link"
       >
         <a
-          href={url}
+          href={safeUrl}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={(e: any) => {
-            e.preventDefault();
-            e.stopPropagation();
-            window.open(url, '_blank', 'noopener,noreferrer');
-          }}
-          onTouchEnd={(e: any) => e.stopPropagation()}
-          onTouchStart={(e: any) => e.stopPropagation()}
-          onMouseDown={(e: any) => e.stopPropagation()}
+          onClickCapture={(e: any) => e.stopPropagation()}
+          onTouchEndCapture={(e: any) => e.stopPropagation()}
+          onTouchStartCapture={(e: any) => e.stopPropagation()}
+          onMouseDownCapture={(e: any) => e.stopPropagation()}
           style={{ display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
         >
           <Image
@@ -132,7 +138,8 @@ function PlatformLinkButton({
     <TouchableOpacity
       onPress={(e) => {
         e.stopPropagation();
-        Linking.openURL(url);
+        const safeUrl = url.includes("?") ? url + "&igsh=1" : url + "?igsh=1";
+        Linking.openURL(safeUrl);
       }}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       activeOpacity={0.6}
@@ -209,6 +216,7 @@ export default function DigestScreen() {
   const [showScript, setShowScript] = useState(false);
   const [editableScript, setEditableScript] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+
 
   // City carousel — nearby cities ordered by proximity
   const nearbyCities = getNearbyCities(marketCity);
@@ -295,6 +303,25 @@ export default function DigestScreen() {
     setEditableScript("");
     setIsEditing(false);
   }
+
+  // Check if selected post has a real script (not b-roll)
+  const selectedHasScript = useMemo(() => {
+    if (!selectedUrl) return false;
+    const item = activeContent.find(c => c.url === selectedUrl);
+    if (!item) return false;
+    // Check the script in the digest data
+    const allScopes = ["Cape Coral", "Fort Myers", "Naples", "Bonita Springs", "Lehigh Acres", "Punta Gorda", "Florida", "USA"] as const;
+    for (const scope of allScopes) {
+      const items = getDigestForCity(scope);
+      const match = items.find(d => d.url === selectedUrl);
+      if (match) {
+        if ((match as any).hasSpeech === false) return false;
+        if (!match.script || match.script.length < 50 || match.script.startsWith("[Script")) return false;
+        return true;
+      }
+    }
+    return adaptations.length > 0;
+  }, [selectedUrl, activeContent, adaptations]);
 
   function handleGenerateScript() {
     if (!selectedUrl || adaptations.length === 0) return;
@@ -429,12 +456,16 @@ export default function DigestScreen() {
                       <Text style={styles.postViews}>
                         {formatViews(item.views || item.likes)} {item.views ? "views" : "likes"}
                       </Text>
-                      {item.discoveredAt && item.discoveredAt.match(/^\d{4}-\d{2}-\d{2}/) && (
-                        <>
-                          <Text style={styles.postDot}>·</Text>
-                          <Text style={styles.postDate}>{formatDate(item.discoveredAt)}</Text>
-                        </>
-                      )}
+                      {item.discoveredAt && item.discoveredAt.match(/^\d{4}-\d{2}-\d{2}/) && (() => {
+                        const { label, fresh } = formatDate(item.discoveredAt);
+                        if (!label) return null;
+                        return (
+                          <>
+                            <Text style={styles.postDot}>·</Text>
+                            <Text style={[styles.postDate, fresh && styles.postDateFresh]}>{label}</Text>
+                          </>
+                        );
+                      })()}
                     </View>
                     <PlatformLinkButton
                       platform={item.platform}
@@ -446,21 +477,21 @@ export default function DigestScreen() {
               );
             })}
 
-            {/* Generate button */}
+            {/* Generate button — only active if selected post has real speech/script */}
             <Pressable
               style={({ pressed }) => [
                 styles.generateBtn,
-                !selectedUrl && styles.generateBtnDisabled,
-                pressed && selectedUrl ? { opacity: 0.85, transform: [{ scale: 0.98 }] } : {},
+                (!selectedUrl || !selectedHasScript) && styles.generateBtnDisabled,
+                pressed && selectedHasScript ? { opacity: 0.85, transform: [{ scale: 0.98 }] } : {},
               ]}
               onPress={handleGenerateScript}
-              disabled={!selectedUrl || adaptLoading}
+              disabled={!selectedUrl || !selectedHasScript || adaptLoading}
             >
               {adaptLoading && selectedUrl ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={[styles.generateBtnText, !selectedUrl && styles.generateBtnTextDisabled]}>
-                  {selectedUrl ? "Generate Script" : "Select a post above"}
+                <Text style={[styles.generateBtnText, (!selectedUrl || !selectedHasScript) && styles.generateBtnTextDisabled]}>
+                  {!selectedUrl ? "Select a post above" : !selectedHasScript ? "No speech to script" : "Generate Script"}
                 </Text>
               )}
             </Pressable>
@@ -642,6 +673,28 @@ const styles = StyleSheet.create({
   postDot: { fontSize: 12, color: "rgba(255,255,255,0.2)" },
   postViews: { fontSize: 12, color: "rgba(255,255,255,0.35)" },
   postDate: { fontSize: 12, color: "rgba(255,255,255,0.3)", fontStyle: "italic" as const },
+  postDateFresh: { color: "#4ADE80", fontWeight: "600" as const, fontStyle: "normal" as const },
+  installBanner: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    backgroundColor: "#1a1a2e",
+    borderRadius: 12,
+    padding: 14,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "rgba(249,115,22,0.3)",
+  },
+  installTitle: { color: "#F97316", fontSize: 14, fontWeight: "700" as const, marginBottom: 2 },
+  installText: { color: "rgba(255,255,255,0.5)", fontSize: 12 },
+  installBtn: {
+    backgroundColor: "#F97316",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  installBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" as const },
   platformBtn: {
     padding: 4,
     marginLeft: 8,

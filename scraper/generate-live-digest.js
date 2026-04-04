@@ -3,6 +3,19 @@ const path = require("path");
 
 const data = JSON.parse(fs.readFileSync(path.join(__dirname, "output/digest_all_with_scope.json"), "utf-8"));
 
+// Load audit reject list (if it exists) — filter out rejected posts without modifying raw data
+let auditRejects = new Set();
+try {
+  const rejectData = JSON.parse(fs.readFileSync(path.join(__dirname, "output/audit_rejects.json"), "utf-8"));
+  auditRejects = new Set(rejectData.rejectShortcodes || []);
+  if (auditRejects.size > 0) console.log("Audit reject list: " + auditRejects.size + " posts will be filtered out");
+} catch {}
+
+// Remove rejected posts from each scope (in memory only, raw file untouched)
+for (const [key, items] of Object.entries(data)) {
+  data[key] = items.filter(item => !auditRejects.has(item.shortcode));
+}
+
 const cityMap = {
   "Cape Coral_FL": "Cape Coral",
   "Fort Myers_FL": "Fort Myers",
@@ -41,7 +54,7 @@ function getDateStr(daysBack) {
 
 const MAX_AGE_DAYS = 7;
 const MAX_POSTS = 5;
-const MAX_POSTS_USA = 10;  // USA tab shows more — all fresh viral posts
+const MAX_POSTS_USA = 5;   // USA tab: 5 posts, same as all other tabs
 const now = new Date();
 
 /**
@@ -56,19 +69,109 @@ function freshFirstSort(a, b) {
   return b.viralityScore - a.viralityScore; // within same date, highest virality wins
 }
 
-// ── Step 1: Clean all posts per scope (dedup + freshness) ──
+// ── HARD LOCATION GATE — last line of defense ──
+// If a post in an FL scope has ANY of these in locationName, caption, or title → reject
+const OUT_OF_AREA_SIGNALS = [
+  "los angeles", "san francisco", "san diego", "seattle", "portland",
+  "chicago", "detroit", "denver", "phoenix", "las vegas", "boston",
+  "houston", "dallas", "austin", "san antonio", "atlanta", "columbus ohio",
+  "sacramento", "tucson", "philadelphia", "pittsburgh", "cleveland",
+  "milwaukee", "indianapolis", "st. louis", "kansas city", "brooklyn",
+  "manhattan", "amelia island", "hollywood", "weston", "idaho",
+  "maryland", "california", "arizona", "connecticut", "oregon", "montana",
+  "pennsylvania", "kentucky", "ohio", "illinois", "massachusetts", "maine",
+  "colorado", "minnesota", "michigan", "hawaii", "utah", "nevada",
+  "#losangelesrealtor", "#houstonrealtor", "#dallasrealtor", "#atlantarealtor",
+  "#chicagorealtor", "#austinrealtor", "#denverrealtor", "#seattlerealtor",
+];
+
+// Signals that are definitive even standalone (state/country names in captions)
+const HARD_STATE_SIGNALS = [
+  "of california", "in california", "california inc", "california realtor",
+  "of arizona", "in arizona", "arizona realtor",
+  "of oregon", "in oregon", "oregon realtor",
+  "of montana", "in montana", "of idaho", "in idaho",
+  "of ohio", "in ohio", "of maryland", "in maryland",
+  "of connecticut", "in connecticut", "of pennsylvania", "in pennsylvania",
+  "of kentucky", "in kentucky", "of maine", "in maine",
+  "of colorado", "in colorado", "of michigan", "in michigan",
+  "of minnesota", "in minnesota", "of illinois", "in illinois",
+  "of massachusetts", "in massachusetts", "of hawaii", "in hawaii",
+  "of utah", "in utah", "of nevada", "in nevada",
+  "of washington state", "in washington state",
+];
+
+function isOutOfArea(item) {
+  const loc = (item.locationName || "").toLowerCase();
+  const cap = (item.caption || "").toLowerCase();
+  const title = (item.title || "").toLowerCase();
+
+  // Instagram location tag — definitive
+  for (const signal of OUT_OF_AREA_SIGNALS) {
+    if (loc.includes(signal)) return signal;
+  }
+
+  // Caption/title near "realtor" or "real estate"
+  for (const signal of OUT_OF_AREA_SIGNALS) {
+    if (cap.includes(signal + " realtor") || cap.includes(signal + " real estate") ||
+        cap.includes("#" + signal.replace(/ /g, "") + "realtor") ||
+        cap.includes("#" + signal.replace(/ /g, "") + "realestate") ||
+        title.includes(signal + " real")) {
+      return signal;
+    }
+  }
+
+  // Hard state signals — standalone in caption
+  for (const signal of HARD_STATE_SIGNALS) {
+    if (cap.includes(signal) || title.includes(signal)) return signal;
+  }
+
+  // Hashtag check — #utah, #arizona, #california etc. as standalone hashtags
+  const NON_FL_STATE_HASHTAGS = [
+    "#utah", "#arizona", "#california", "#oregon", "#montana", "#idaho",
+    "#ohio", "#maryland", "#connecticut", "#pennsylvania", "#kentucky",
+    "#maine", "#colorado", "#michigan", "#minnesota", "#illinois",
+    "#massachusetts", "#hawaii", "#nevada", "#washington", "#wisconsin",
+    "#indiana", "#missouri", "#iowa", "#kansas", "#oklahoma", "#nebraska",
+    "#arkansas", "#westvirginia", "#northdakota", "#southdakota", "#wyoming",
+    "#vermont", "#newhampshire", "#rhodeisland", "#delaware", "#newmexico",
+    "#alaska",
+  ];
+  for (const tag of NON_FL_STATE_HASHTAGS) {
+    if (cap.includes(tag) || title.includes(tag)) return tag;
+  }
+
+  return null;
+}
+
+// ── Step 1: Clean all posts per scope (dedup + freshness + location gate) ──
 const cleanByScope = {};
+let locationRejected = 0;
 for (const [key, items] of Object.entries(data)) {
   const city = cityMap[key] || key;
+  const isFlScope = key.includes("_FL") || key === "Florida";
+
   const fresh = items.filter(item => {
     const dateStr = item.date || item.postDate;
     if (!dateStr) return true;
     const d = new Date(dateStr);
     return (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24) <= MAX_AGE_DAYS;
   });
+
+  // Location gate: reject out-of-area posts from FL scopes
+  const locationClean = fresh.filter(item => {
+    if (!isFlScope) return true;
+    const badSignal = isOutOfArea(item);
+    if (badSignal) {
+      console.log("  REJECTED: @" + (item.author || item.authorHandle) + " in " + key + " — " + badSignal);
+      locationRejected++;
+      return false;
+    }
+    return true;
+  });
   const seenSC = new Set();
   const seenAuth = new Set();
-  const deduped = fresh.filter(item => {
+  const deduped = locationClean.filter(item => {
     const sc = item.shortcode;
     const author = (item.author || item.authorHandle || "").toLowerCase();
     if (seenSC.has(sc)) return false;
@@ -77,14 +180,12 @@ for (const [key, items] of Object.entries(data)) {
     if (author) seenAuth.add(author);
     return true;
   });
-  // SELECTION by freshness (yesterday fills first)
+  // Sort: date-grouped (newest date first), virality within each date
   deduped.sort(freshFirstSort);
-  // Pick the freshest, then re-sort by virality for DISPLAY
-  const selected = deduped.slice(0, MAX_POSTS);
-  selected.sort((a, b) => b.viralityScore - a.viralityScore);
-  // Full pool for hierarchy (freshFirstSort), selected first for output (virality)
-  cleanByScope[city] = [...selected, ...deduped.slice(MAX_POSTS)];
+  // Keep all posts for hierarchy building
+  cleanByScope[city] = deduped;
 }
+if (locationRejected > 0) console.log("Location gate rejected " + locationRejected + " out-of-area posts");
 
 // ── Step 2: Build hierarchy ──
 // Collect ALL posts from every scope into a flat pool
@@ -121,59 +222,17 @@ const freshOnly = allPosts.filter(p => {
   const d = new Date(dateStr);
   return (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24) <= HIERARCHY_MAX_AGE;
 });
-// ── Priority: Cities > Florida > USA ──
-// Smaller areas get first dibs on their best posts
-
-const EXTRA_MIN_SCORE = 800;
+// ── Hierarchy: FL = all cities + FL search, USA = everything ──
 const isFlScope = (p) => p._scope === "Florida" || SWFL_CITIES.includes(p._scope);
 
-// FLORIDA tab: two-pass (same pattern as USA)
-// Base 5: freshest FL+city posts
+// FLORIDA = all FL city posts + Florida scope posts, date-grouped then virality
 const flPool = freshOnly.filter(isFlScope);
 flPool.sort(freshFirstSort);
-const flBase = dedupTopN(flPool, MAX_POSTS);
-// Extras: any FL post with 800+ virality not already in base
-const flSelectedSC = new Set(flBase.map(p => p.shortcode));
-const flSelectedAuth = new Set(flBase.map(p => (p.author || p.authorHandle || "").toLowerCase()).filter(Boolean));
-const flExtras = [];
-for (const p of [...flPool].sort((a, b) => b.viralityScore - a.viralityScore)) {
-  if (flExtras.length >= 5) break;
-  if (flSelectedSC.has(p.shortcode)) continue;
-  const auth = (p.author || p.authorHandle || "").toLowerCase();
-  if (auth && flSelectedAuth.has(auth)) continue;
-  if (p.viralityScore < EXTRA_MIN_SCORE) continue;
-  flSelectedSC.add(p.shortcode);
-  if (auth) flSelectedAuth.add(auth);
-  flExtras.push(p);
-}
-// Display by virality within base, extras after
-flBase.sort((a, b) => b.viralityScore - a.viralityScore);
-const floridaTop = [...flBase, ...flExtras];
+const floridaTop = dedupTopN(flPool, MAX_POSTS);
 
-// USA tab: national leaderboard — top posts from ALL states
-// Select freshest first (yesterday fills slots), display by virality
-const usaPool = [...freshOnly].sort(freshFirstSort);
-const usaBase = dedupTopN(usaPool, MAX_POSTS);
-// Extras: 800+ from yesterday, not already in base
-const yesterday = getDateStr(1);
-const usaSelectedSC = new Set(usaBase.map(p => p.shortcode));
-const usaSelectedAuth = new Set(usaBase.map(p => (p.author || p.authorHandle || "").toLowerCase()).filter(Boolean));
-const usaExtras = [];
-for (const p of [...freshOnly].sort((a, b) => b.viralityScore - a.viralityScore)) {
-  if (usaExtras.length >= MAX_POSTS_USA - MAX_POSTS) break;
-  if (usaSelectedSC.has(p.shortcode)) continue;
-  const auth = (p.author || p.authorHandle || "").toLowerCase();
-  if (auth && usaSelectedAuth.has(auth)) continue;
-  if (p.viralityScore < EXTRA_MIN_SCORE) continue;
-  const pDate = p.date || p.postDate || "";
-  if (pDate !== yesterday) continue;
-  usaSelectedSC.add(p.shortcode);
-  if (auth) usaSelectedAuth.add(auth);
-  usaExtras.push(p);
-}
-// Display by virality
-usaBase.sort((a, b) => b.viralityScore - a.viralityScore);
-const usaTop = [...usaBase, ...usaExtras];
+// USA = ALL posts from ALL scopes, top 5 by virality
+const usaPool = [...freshOnly].sort((a, b) => b.viralityScore - a.viralityScore);
+const usaTop = dedupTopN(usaPool, MAX_POSTS);
 
 // Override the Florida and USA entries
 cleanByScope["Florida"] = floridaTop;
@@ -217,7 +276,7 @@ for (const [city, items] of Object.entries(cleanByScope)) {
   // Skip state scopes (Georgia, Texas, etc.) — they feed hierarchy only
   if (!OUTPUT_SCOPES.has(city)) continue;
   // Cap per-city tabs at 5, USA at 10 (already capped by hierarchy)
-  const maxForScope = (city === "USA") ? MAX_POSTS_USA : MAX_POSTS;
+  const maxForScope = MAX_POSTS;
   const outputItems = items.slice(0, maxForScope);
   out += `  "${city}": [\n`;
   for (const item of outputItems) {
@@ -233,6 +292,7 @@ for (const [city, items] of Object.entries(cleanByScope)) {
     out += `      script: "${esc(item.script)}",\n`;
     out += `      caption: "${esc(item.caption || item.title)}",\n`;
     if (item.date) out += `      postDate: "${item.date}",\n`;
+    if (item.hasSpeech === false) out += `      hasSpeech: false,\n`;
 
     // For Florida/USA entries, embed localized scripts per city
     if (city === "Florida" || city === "USA") {

@@ -98,7 +98,6 @@ export default function ZipOnboarding({ onComplete }: ZipOnboardingProps) {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.footer}>Currently serving SW Florida</Text>
     </View>
   );
 }
