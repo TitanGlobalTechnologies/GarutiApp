@@ -183,7 +183,28 @@ function postMentionsCity(item, scopeKey) {
   const title = (item.title || "").toLowerCase();
   const transcript = (item.transcript || "").toLowerCase();
   const allText = loc + " " + cap + " " + title + " " + transcript;
-  return aliases.some(a => allText.includes(a));
+  if (!aliases.some(a => allText.includes(a))) return false;
+
+  // Multi-city check: if the post mentions 3+ different cities, it's a regional/SWFL
+  // market update, not about this specific city. Bump to Florida instead.
+  let citiesMentioned = 0;
+  for (const [otherScope, otherAliases] of Object.entries(CITY_VERIFY)) {
+    if (otherAliases.some(a => allText.includes(a))) citiesMentioned++;
+  }
+  if (citiesMentioned >= 3) return false; // regional post — not city-specific
+  return true;
+}
+
+// ── SPANISH FILTER: English only ──
+const SPANISH_SIGNALS = [
+  "comprar casa", "bienes raices", "inmueble", "hipoteca", "primera vez",
+  "sin residencia", "prestamo", "asi puedes", "credito", "inversionista",
+  "ventas de casas", "tu casa", "tu hogar", "aqui te", "mira este",
+  "propiedad en venta", "agente de bienes", "empieza la historia",
+];
+function isSpanish(item) {
+  const text = ((item.caption || "") + " " + (item.title || "") + " " + (item.transcript || "")).toLowerCase();
+  return SPANISH_SIGNALS.some(s => text.includes(s));
 }
 
 // ── Step 1: Clean all posts per scope (dedup + freshness + CITY VERIFICATION) ──
@@ -211,8 +232,17 @@ for (const [key, items] of Object.entries(data)) {
     return false;
   });
 
+  // Spanish filter: English only
+  const englishOnly = cityVerified.filter(item => {
+    if (isSpanish(item)) {
+      console.log("  REJECTED: @" + (item.author || item.authorHandle) + " in " + key + " — spanish");
+      return false;
+    }
+    return true;
+  });
+
   // Location gate: reject out-of-area posts from FL scopes
-  const locationClean = cityVerified.filter(item => {
+  const locationClean = englishOnly.filter(item => {
     if (!isFlScope) return true;
     const badSignal = isOutOfArea(item);
     if (badSignal) {
