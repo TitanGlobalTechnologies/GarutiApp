@@ -42,22 +42,43 @@ if (!SERPAPI_KEY) {
 }
 
 // ── Query variants ──
-// Group 1: Agent-keyword queries (finds agents who identify as realtors)
-// Group 2: Location-property queries (finds property tours by agents who don't use RE keywords)
+// Group 1: Agent-keyword queries — run on ALL 17 targets (cities + FL + states)
 const QUERIES_AGENT = [
   'site:instagram.com/reel intext:"realtor" real estate',
   'site:instagram.com/reel intext:"realty" real estate',
   'site:instagram.com/reel intext:"real estate" homes for sale',
 ];
 
-// Location queries use {city} placeholder — replaced per target
-const QUERIES_LOCATION = [
-  'site:instagram.com/reel "{city}" homes for sale',
-  'site:instagram.com/reel "{city}" property listing',
-  'site:instagram.com/reel "{city}" luxury home tour',
+// Group 2: City queries — run on city + FL scopes only. {city} replaced per target.
+// Q1: City + home/homes (80% agent rate — RE-focused)
+// Q2: City name only (broad net — catches everyone mentioning the city)
+const QUERIES_CITY = [
+  'site:instagram.com/reel intext:"{city}" OR intext:"{citynospace}" "homes" OR homes OR "home" OR home',
+  'site:instagram.com/reel intext:"{city}" OR intext:"{citynospace}"',
 ];
 
 const SWFL_CITIES = ["Cape Coral", "Fort Myers", "Naples", "Bonita Springs", "Lehigh Acres", "Punta Gorda"];
+
+// ── City hard gate aliases — post must mention the city to be assigned to its tab ──
+// Must match generate-live-digest.js CITY_VERIFY and audit-cities.js cityAliases
+const CITY_VERIFY = {
+  "Cape Coral_FL": ["cape coral", "capecoral", "#capecoral"],
+  "Fort Myers_FL": ["fort myers", "ft myers", "ft. myers", "fortmyers", "#fortmyers"],
+  "Naples_FL": ["naples", "#naples"],
+  "Bonita Springs_FL": ["bonita springs", "bonitasprings", "#bonitasprings"],
+  "Lehigh Acres_FL": ["lehigh acres", "lehighacres", "#lehighacres"],
+  "Punta Gorda_FL": ["punta gorda", "puntagorda", "#puntagorda", "charlotte county"],
+};
+
+function postMentionsCity(eng, serpTitle, scopeKey) {
+  const aliases = CITY_VERIFY[scopeKey];
+  if (!aliases) return true; // Not a city scope — no check needed
+  const loc = (eng.locationName || "").toLowerCase();
+  const cap = (eng.caption || "").toLowerCase();
+  const title = (serpTitle || "").toLowerCase();
+  const allText = loc + " " + cap + " " + title;
+  return aliases.some(a => allText.includes(a));
+}
 
 // ── Search targets ──
 const ALL_TARGETS = [
@@ -81,7 +102,8 @@ const ALL_TARGETS = [
 ];
 
 // Minimum verified agents per scope before stopping lookback
-const MIN_AGENTS = { city: 10, state: 10, nearby: 3 };
+// city: 5 is enough (we show 5 per tab, and existing master has more)
+const MIN_AGENTS = { city: 5, state: 10, nearby: 3 };
 
 // ── Location filter: reject posts clearly from outside the target area ──
 // States we search — posts tagged in these states are allowed
@@ -276,6 +298,7 @@ async function getEngagement(url) {
         "X-ASBD-ID": "129477",
         "Content-Type": "application/x-www-form-urlencoded",
       },
+      signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) { engagementCache.set(sc, null); return null; }
     const json = await res.json();
@@ -319,6 +342,7 @@ async function fetchProfileCached(username) {
   try {
     const res = await fetch(`https://www.instagram.com/${username}/`, {
       headers: { "User-Agent": "Googlebot/2.1 (+http://www.google.com/bot.html)", "Accept": "text/html" },
+      signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) return null;
     const html = await res.text();
@@ -337,29 +361,37 @@ async function fetchProfileCached(username) {
 //  Transcription (Whisper, cached)
 // ══════════════════════════════════════════════════════════
 
-async function getVideoUrl(shortcode) {
-  const cached = engagementCache.get(shortcode);
-  if (cached?.videoUrl) return cached.videoUrl;
+/**
+ * Download IG reel video using yt-dlp (no IG API needed, avoids rate limits).
+ * Falls back to GraphQL video_url from engagement cache if yt-dlp fails.
+ */
+async function downloadReelVideo(shortcode) {
+  const videoPath = path.join(TEMP_DIR, `${shortcode}.mp4`);
+  if (fs.existsSync(videoPath)) return videoPath;
+
+  // Method 1: yt-dlp (preferred — no rate limits)
+  const reelUrl = `https://www.instagram.com/reel/${shortcode}/`;
   try {
-    const params = new URLSearchParams({
-      variables: JSON.stringify({ shortcode }),
-      doc_id: "10015901848480474",
-      lsd: "AVqbxe3J_YA",
+    execSync(`yt-dlp -q --no-warnings --merge-output-format mp4 -o "${videoPath.replace(/\\/g, "/")}" "${reelUrl}"`, {
+      stdio: "pipe", timeout: 60000,
+      env: { ...process.env, PATH: (process.env.PATH || "") + ";C:\\Python313\\Scripts" },
     });
-    const res = await fetch("https://www.instagram.com/api/graphql?" + params, {
-      method: "POST",
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "X-IG-App-ID": "936619743392459",
-        "X-FB-LSD": "AVqbxe3J_YA",
-        "X-ASBD-ID": "129477",
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-    });
-    if (!res.ok) return null;
-    const json = await res.json();
-    return json?.data?.xdt_shortcode_media?.video_url || null;
-  } catch { return null; }
+    if (fs.existsSync(videoPath)) return videoPath;
+  } catch {}
+
+  // Method 2: engagement cache video URL (may be rate-limited)
+  const cached = engagementCache.get(shortcode);
+  if (cached?.videoUrl) {
+    try {
+      const res = await fetch(cached.videoUrl, { signal: AbortSignal.timeout(15000) });
+      if (res.ok) {
+        fs.writeFileSync(videoPath, Buffer.from(await res.arrayBuffer()));
+        return videoPath;
+      }
+    } catch {}
+  }
+
+  return null;
 }
 
 async function transcribeReel(shortcode) {
@@ -367,17 +399,9 @@ async function transcribeReel(shortcode) {
   if (fs.existsSync(cachePath)) {
     return { transcript: fs.readFileSync(cachePath, "utf-8"), cached: true };
   }
-  const videoUrl = await getVideoUrl(shortcode);
-  if (!videoUrl) return { transcript: "", cached: false };
 
-  const videoPath = path.join(TEMP_DIR, `${shortcode}.mp4`);
-  if (!fs.existsSync(videoPath)) {
-    try {
-      const res = await fetch(videoUrl);
-      if (!res.ok) return { transcript: "", cached: false };
-      fs.writeFileSync(videoPath, Buffer.from(await res.arrayBuffer()));
-    } catch { return { transcript: "", cached: false }; }
-  }
+  const videoPath = await downloadReelVideo(shortcode);
+  if (!videoPath) return { transcript: "", cached: false };
 
   try {
     const pyScript = path.join(TEMP_DIR, `_w_${shortcode}.py`);
@@ -535,6 +559,18 @@ async function main() {
   const globalSeenShortcodes = new Set();
   let totalAgents = 0;
 
+  // Load existing shortcodes from master file — NEVER re-scrape what we already have
+  const MASTER_FILE = path.join(__dirname, "output/digest_master_raw.json");
+  try {
+    const master = JSON.parse(fs.readFileSync(MASTER_FILE, "utf-8"));
+    for (const posts of Object.values(master)) {
+      for (const p of posts) globalSeenShortcodes.add(p.shortcode);
+    }
+    console.log(`  Loaded ${globalSeenShortcodes.size} existing shortcodes from master (will skip)\n`);
+  } catch {
+    console.log("  No master file found — fresh start\n");
+  }
+
   for (let i = 0; i < targets.length; i++) {
     const { scope, location, type } = targets[i];
     const minAgents = MIN_AGENTS[type] || 3;
@@ -554,12 +590,18 @@ async function main() {
       const dateTo = getDateStr(dayBack - 1);
       const dayLabel = dayBack === 1 ? "yesterday" : `${dayBack}d ago`;
 
-      // Build queries: agent keywords + location-specific for city scopes
+      // Build queries: agent keywords + city-specific queries
       const cityName = scope.replace("_FL", "").replace(/_/g, " ");
-      const locationQueries = (type === "city")
-        ? QUERIES_LOCATION.map(q => q.replace("{city}", cityName))
+      const cityNospace = cityName.replace(/ /g, "").toLowerCase();
+      const cityQueries = (type === "city" || type === "state")
+        ? QUERIES_CITY.map(q => q.replace(/\{city\}/g, cityName).replace(/\{citynospace\}/g, cityNospace))
         : [];
-      const allQueries = [...QUERIES_AGENT, ...locationQueries];
+      // When --only-cities: skip agent-keyword queries for city scopes.
+      // Agent queries return national results that fail the city gate.
+      // City-specific queries (intext:"{city}") are the ones that produce verified posts.
+      const allQueries = (onlyCities && type === "city")
+        ? cityQueries
+        : [...QUERIES_AGENT, ...cityQueries];
 
       console.log(`     \uD83D\uDCC5 ${dateFrom} (${dayLabel}) \u2014 ${allQueries.length} queries`);
 
@@ -622,6 +664,13 @@ async function main() {
           if (locCheck === "reject") {
             const where = eng.locationName || eng.locationCity || "caption signals";
             console.log(`       \u274C @${eng.author} | REJECTED — wrong location: ${where}`);
+            continue;
+          }
+
+          // City hard gate: for city scopes, verify post mentions the city
+          // Posts from agent-keyword queries often don't mention the city
+          if (type === "city" && !postMentionsCity(eng, r.title, scope)) {
+            console.log(`       \u23ED\uFE0F  @${eng.author} | skipped — doesn't mention ${scope.replace("_FL", "")}`);
             continue;
           }
 
@@ -778,14 +827,33 @@ async function main() {
   // Don't pre-build Florida/USA scopes — generate-live-digest.js builds them
   // from the raw city + state scopes (avoids cross-scope duplicates)
 
-  // Save raw scopes only
+  // Merge new results into master (never overwrite, only append new shortcodes)
+  let master = {};
+  try { master = JSON.parse(fs.readFileSync(MASTER_FILE, "utf-8")); } catch {}
+  let newAdded = 0;
+  for (const [scope, posts] of Object.entries(scopeResults)) {
+    if (!master[scope]) master[scope] = [];
+    const existingSC = new Set(master[scope].map(p => p.shortcode));
+    for (const p of posts) {
+      if (!existingSC.has(p.shortcode)) {
+        master[scope].push(p);
+        existingSC.add(p.shortcode);
+        newAdded++;
+      }
+    }
+  }
+  fs.writeFileSync(MASTER_FILE, JSON.stringify(master, null, 2));
+  console.log(`\n  \uD83D\uDCC1 Master updated: +${newAdded} new posts (${MASTER_FILE})`);
+
+  // Also save current run as the working file
   const outFile = path.join(__dirname, "output/digest_all_with_scope.json");
   fs.writeFileSync(outFile, JSON.stringify(scopeResults, null, 2));
-  console.log(`\n  \uD83D\uDCC1 Saved: ${outFile}`);
+  console.log(`  \uD83D\uDCC1 Saved: ${outFile}`);
 
-  const stateNation = { Florida: flTop, USA: usaTop };
-  fs.writeFileSync(path.join(__dirname, "output/digest_state_nation.json"), JSON.stringify(stateNation, null, 2));
-  console.log(`  \uD83D\uDCC1 Saved: digest_state_nation.json`);
+  // Date-stamped backup of this run (never lost)
+  const runFile = path.join(__dirname, `output/digest_run_${today}.json`);
+  fs.writeFileSync(runFile, JSON.stringify({ _meta: { date: today, agents: totalAgents, apiCalls: serpApiUsed }, ...scopeResults }, null, 2));
+  console.log(`  \uD83D\uDCC1 Run backup: ${runFile}`);
 
   try { fs.unlinkSync(path.join(__dirname, "output/digest_partial.json")); } catch {}
 

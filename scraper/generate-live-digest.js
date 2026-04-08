@@ -1,3 +1,13 @@
+/**
+ * FRESHNESS RULE (NEVER FORGET):
+ * 1. ALL posts from yesterday take priority. Rank by virality. Fill the tab.
+ * 2. If yesterday has fewer than 5 posts → grab from yesterday-1 (day before).
+ *    Pick the most viral from that day to complete 5 total.
+ * 3. Yesterday-1 posts appear AFTER yesterday's posts in the tab.
+ * 4. If still fewer than 5 → go to yesterday-2. Same logic. Max 7 days back.
+ * 5. Display order is ALWAYS virality descending within each date group.
+ * 6. NEVER show an older post ahead of a newer post, regardless of virality.
+ */
 const fs = require("fs");
 const path = require("path");
 
@@ -24,7 +34,7 @@ const cityMap = {
   "Lehigh Acres_FL": "Lehigh Acres",
   "Punta Gorda_FL": "Punta Gorda",
   "Florida": "Florida",
-  "USA": "USA",
+  // USA tab removed — Florida is the aggregate of everything
 };
 
 const SWFL_CITIES = ["Cape Coral", "Fort Myers", "Naples", "Bonita Springs", "Lehigh Acres", "Punta Gorda"];
@@ -33,7 +43,7 @@ const SWFL_CITIES = ["Cape Coral", "Fort Myers", "Naples", "Bonita Springs", "Le
 // feed the hierarchy pools but don't become tabs in the app
 const OUTPUT_SCOPES = new Set([
   "Cape Coral", "Fort Myers", "Naples", "Bonita Springs",
-  "Lehigh Acres", "Punta Gorda", "Florida", "USA",
+  "Lehigh Acres", "Punta Gorda", "Florida",
 ]);
 
 function esc(str) {
@@ -54,8 +64,17 @@ function getDateStr(daysBack) {
 
 const MAX_AGE_DAYS = 7;
 const MAX_POSTS = 5;
-const MAX_POSTS_USA = 5;   // USA tab: 5 posts, same as all other tabs
+const MAX_POSTS_USA = 5;
 const now = new Date();
+
+// SCRAPE TARGET DATE: pass via CLI arg, or default to yesterday.
+// Usage: node generate-live-digest.js 2026-04-06
+// This is the date we ACTUALLY scraped for. Posts after this date are junk.
+const SCRAPE_TARGET = process.argv[2] || (() => {
+  const d = new Date(); d.setDate(d.getDate() - 1);
+  return d.toISOString().split("T")[0];
+})();
+console.log("Scrape target date: " + SCRAPE_TARGET + " (posts after this date excluded)");
 
 /**
  * FRESHNESS > VIRALITY. Always.
@@ -144,12 +163,37 @@ function isOutOfArea(item) {
   return null;
 }
 
-// ── Step 1: Clean all posts per scope (dedup + freshness + location gate) ──
+// ── CITY HARD GATE: verify post actually mentions the city ──
+// This is THE #1 PRIORITY. A post must mention its city in location tag, caption, title, or transcript.
+// Same rules for Instagram AND YouTube. No exceptions.
+const CITY_VERIFY = {
+  "Cape Coral_FL": ["cape coral", "capecoral", "#capecoral"],
+  "Fort Myers_FL": ["fort myers", "ft myers", "ft. myers", "fortmyers", "#fortmyers"],
+  "Naples_FL": ["naples", "#naples"],
+  "Bonita Springs_FL": ["bonita springs", "bonitasprings", "#bonitasprings"],
+  "Lehigh Acres_FL": ["lehigh acres", "lehighacres", "#lehighacres"],
+  "Punta Gorda_FL": ["punta gorda", "puntagorda", "#puntagorda", "charlotte county"],
+};
+
+function postMentionsCity(item, scopeKey) {
+  const aliases = CITY_VERIFY[scopeKey];
+  if (!aliases) return true; // Florida or non-city scope — no city check needed
+  const loc = (item.locationName || "").toLowerCase();
+  const cap = (item.caption || "").toLowerCase();
+  const title = (item.title || "").toLowerCase();
+  const transcript = (item.transcript || "").toLowerCase();
+  const allText = loc + " " + cap + " " + title + " " + transcript;
+  return aliases.some(a => allText.includes(a));
+}
+
+// ── Step 1: Clean all posts per scope (dedup + freshness + CITY VERIFICATION) ──
 const cleanByScope = {};
 let locationRejected = 0;
+let cityGateRejected = 0;
 for (const [key, items] of Object.entries(data)) {
   const city = cityMap[key] || key;
   const isFlScope = key.includes("_FL") || key === "Florida";
+  const isCityScope = key.includes("_FL") && key !== "Florida";
 
   const fresh = items.filter(item => {
     const dateStr = item.date || item.postDate;
@@ -158,8 +202,17 @@ for (const [key, items] of Object.entries(data)) {
     return (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24) <= MAX_AGE_DAYS;
   });
 
+  // CITY HARD GATE: post must mention its assigned city
+  // This applies to BOTH Instagram AND YouTube
+  const cityVerified = fresh.filter(item => {
+    if (!isCityScope) return true; // Florida scope — skip city check
+    if (postMentionsCity(item, key)) return true;
+    cityGateRejected++;
+    return false;
+  });
+
   // Location gate: reject out-of-area posts from FL scopes
-  const locationClean = fresh.filter(item => {
+  const locationClean = cityVerified.filter(item => {
     if (!isFlScope) return true;
     const badSignal = isOutOfArea(item);
     if (badSignal) {
@@ -180,11 +233,21 @@ for (const [key, items] of Object.entries(data)) {
     if (author) seenAuth.add(author);
     return true;
   });
+  // Filter: only keep posts from scrape target date or earlier.
+  // Posts AFTER the scrape target are "today" junk that slipped in.
+  const quality = deduped.filter(item => {
+    const d = item.date || item.postDate;
+    if (!d) return false;
+    if (d > SCRAPE_TARGET) return false; // after scrape target = junk
+    if ((item.viralityScore || 0) < 1) return false; // score 0 = broken
+    return true;
+  });
   // Sort: date-grouped (newest date first), virality within each date
-  deduped.sort(freshFirstSort);
+  quality.sort(freshFirstSort);
   // Keep all posts for hierarchy building
-  cleanByScope[city] = deduped;
+  cleanByScope[city] = quality;
 }
+if (cityGateRejected > 0) console.log("City gate rejected " + cityGateRejected + " posts that don't mention their assigned city");
 if (locationRejected > 0) console.log("Location gate rejected " + locationRejected + " out-of-area posts");
 
 // ── Step 2: Build hierarchy ──
@@ -213,43 +276,72 @@ function dedupTopN(posts, n) {
   return result;
 }
 
-// For FL/USA hierarchy tabs: match the scraper's 7-day lookback window
-// The scraper already prioritizes yesterday-first, so anything it found is valid
+// ── Filter out garbage before hierarchy ──
+// Only keep posts from scrape target date or earlier. No score-0. Max 7 days old.
 const HIERARCHY_MAX_AGE = 7;
-const freshOnly = allPosts.filter(p => {
+const usablePosts = allPosts.filter(p => {
   const dateStr = p.date || p.postDate;
-  if (!dateStr) return false; // no date = don't include in hierarchy
+  if (!dateStr) return false;
+  if (dateStr > SCRAPE_TARGET) return false; // after scrape target = junk
+  if ((p.viralityScore || 0) < 1) return false;
   const d = new Date(dateStr);
   return (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24) <= HIERARCHY_MAX_AGE;
 });
+
+console.log("Usable posts (no today, no score-0, max 7d): " + usablePosts.length + " of " + allPosts.length);
+
 // ── Hierarchy: FL = all cities + FL search, USA = everything ──
 const isFlScope = (p) => p._scope === "Florida" || SWFL_CITIES.includes(p._scope);
 
-// FLORIDA = all FL city posts + Florida scope posts, date-grouped then virality
-const flPool = freshOnly.filter(isFlScope);
+// FLORIDA = all FL city posts + Florida scope posts
+// Freshness first: yesterday's top virality, then day-2, etc.
+const flPool = usablePosts.filter(isFlScope);
 flPool.sort(freshFirstSort);
 const floridaTop = dedupTopN(flPool, MAX_POSTS);
 
-// USA = ALL posts from ALL scopes, top 5 by virality
-const usaPool = [...freshOnly].sort((a, b) => b.viralityScore - a.viralityScore);
-const usaTop = dedupTopN(usaPool, MAX_POSTS);
-
-// Override the Florida and USA entries
+// Override the Florida entry
 cleanByScope["Florida"] = floridaTop;
-cleanByScope["USA"] = usaTop;
 
 console.log("Hierarchy built:");
-console.log("  USA: " + usaTop.map(p => "👾" + p.viralityScore + " @" + (p.author || p.authorHandle) + " [" + p._scope + "]").join(", "));
-console.log("  FL:  " + floridaTop.map(p => "👾" + p.viralityScore + " @" + (p.author || p.authorHandle) + " [" + p._scope + "]").join(", "));
+console.log("  FL:  " + floridaTop.map(p => "👾" + p.viralityScore + " @" + (p.author || p.authorHandle) + " [" + p._scope + "] " + (p.date || "")).join(", "));
+
+// ── Build debug metadata for each tab ──
+const debugInfo = {};
+for (const [city, items] of Object.entries(cleanByScope)) {
+  if (!OUTPUT_SCOPES.has(city)) continue;
+  const sources = {};
+  for (const p of items) {
+    const src = (p.platform || "instagram") + " via " + (p._scope || city);
+    sources[src] = (sources[src] || 0) + 1;
+  }
+  debugInfo[city] = {
+    totalPosts: items.length,
+    topScore: items.length > 0 ? items[0].viralityScore : 0,
+    sources,
+  };
+}
+if (debugInfo["Florida"]) debugInfo["Florida"]._composition = "All SWFL city posts + Florida-wide search. Freshness > Virality.";
+
+console.log("\nDebug info per tab:");
+for (const [city, info] of Object.entries(debugInfo)) {
+  console.log("  " + city + ": " + info.totalPosts + " posts, top score: " + info.topScore + " | sources: " + JSON.stringify(info.sources));
+}
 
 // ── Step 3: Generate TypeScript ──
 let out = `/**
  * Live digest data for all SWFL cities
- * Real scraped content with verified Instagram engagement
  * Generated: ${now.toISOString().split("T")[0]}
  *
- * Hierarchy: USA = top 10 freshest from all, Florida = top 5 freshest from FL+cities
- * FRESHNESS > VIRALITY: yesterday's posts always beat older ones
+ * TAB HIERARCHY:
+ *   City tabs: posts found specifically for that city
+ *   Florida tab: ALL city posts + Florida-wide search (union of all FL data)
+ *   USA tab: ALL posts from ALL scopes (cities + FL + all states + USA search)
+ *
+ * RULES:
+ *   - Freshness > Virality: yesterday first, then day-2, etc.
+ *   - No "today" posts (no views yet)
+ *   - No score-0 posts (broken enrichment)
+ *   - 5 posts per tab max
  */
 
 import type { DiscoveredContent } from "../lib/content-pipeline";
@@ -266,9 +358,24 @@ export interface LiveDigestItem {
   script: string;
   caption: string;
   postDate?: string;
+  platform?: string;
+  sourceTab?: string;
+  localizedScripts?: Record<string, string>;
+  hasSpeech?: boolean;
 }
 
-export type SupportedCity = "Cape Coral" | "Fort Myers" | "Naples" | "Bonita Springs" | "Lehigh Acres" | "Punta Gorda" | "Florida" | "USA";
+export type SupportedCity = "Cape Coral" | "Fort Myers" | "Naples" | "Bonita Springs" | "Lehigh Acres" | "Punta Gorda" | "Florida";
+
+// Debug: shows what search queries feed each tab
+export const TAB_DEBUG: Record<string, string> = {
+  "Cape Coral": "YT API: 'Cape Coral real estate/homes/realtor' | SerpAPI: site:youtube.com/shorts 'cape coral' + geo:Cape Coral,FL",
+  "Fort Myers": "YT API: 'Fort Myers real estate/homes/realtor' | SerpAPI: site:youtube.com/shorts + geo:Fort Myers,FL",
+  "Naples": "YT API: 'Naples Florida real estate/homes/realtor' | SerpAPI: site:youtube.com/shorts + geo:Naples,FL",
+  "Bonita Springs": "YT API: 'Bonita Springs real estate/homes/realtor' | SerpAPI: site:youtube.com/shorts + geo:Bonita Springs,FL",
+  "Lehigh Acres": "YT API: 'Lehigh Acres real estate/homes/realtor' | SerpAPI: site:youtube.com/shorts + geo:Lehigh Acres,FL",
+  "Punta Gorda": "YT API: 'Punta Gorda real estate/homes/realtor' | SerpAPI: site:youtube.com/shorts + geo:Punta Gorda,FL",
+  "Florida": "= Cape Coral + Fort Myers + Naples + Bonita Springs + Lehigh Acres + Punta Gorda + Florida-wide search (geo:Florida, queries: real estate/realtor/homes for sale). Top 5 by freshness then virality.",
+};
 
 export const CITY_DIGESTS: Record<SupportedCity, LiveDigestItem[]> = {\n`;
 
@@ -292,10 +399,11 @@ for (const [city, items] of Object.entries(cleanByScope)) {
     out += `      script: "${esc(item.script)}",\n`;
     out += `      caption: "${esc(item.caption || item.title)}",\n`;
     if (item.date) out += `      postDate: "${item.date}",\n`;
-    if (item.hasSpeech === false) out += `      hasSpeech: false,\n`;
+    out += `      platform: "${item.platform || "instagram"}",\n`;
+    if (item._scope && item._scope !== city) out += `      sourceTab: "${item._scope}",\n`;
 
     // For Florida/USA entries, embed localized scripts per city
-    if (city === "Florida" || city === "USA") {
+    if (city === "Florida") {
       out += `      localizedScripts: {\n`;
       for (const c of SWFL_CITIES) {
         const cacheKey = `${item.shortcode}_${c.replace(/\s/g, "_")}`;
@@ -323,7 +431,7 @@ export function getLiveDigestContent(city: SupportedCity = "Cape Coral"): Discov
     url: item.url,
     title: item.title,
     caption: item.caption,
-    platform: "instagram" as const,
+    platform: (item.platform || "instagram") as "instagram" | "youtube",
     creatorHandle: item.authorHandle,
     creatorName: item.authorHandle,
     thumbnail: "",
